@@ -46,12 +46,16 @@ our $re_D       = qr/^\s*
 
 sub _dieline {
     my ($self, $msg) = @_;
-    die "Parse line #$self->{_curline}: $msg";
+    die "Parse error".(defined($self->{_curline}) ?
+                           " line #$self->{_curline}" : "").
+        ": $msg";
 }
 
 sub _warnline {
     my ($self, $msg) = @_;
-    $log->warn("Parse line #$self->{_curline}: $msg");
+    $log->warn("Parse error".(defined($self->{_curline}) ?
+                                  " line #$self->{_curline}" : "").
+                                      ": $msg");
 }
 
 sub _parse_quoted {
@@ -141,7 +145,8 @@ sub _parse {
 sub new {
     my ($class, $raw) = @_;
     my $self = bless {}, $class;
-    #$self->_parse($raw);
+    $self->_parse($raw) if defined($raw);
+    $self;
 }
 
 $SPEC{a} = {
