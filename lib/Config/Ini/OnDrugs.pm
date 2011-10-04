@@ -89,7 +89,7 @@ preserving comments/whitespaces.)
 =head1 INI::OD FORMAT SPECIFICATION
 
 Since the INI format does not have any formal specification, here is the
-specification for INI as used by this module (from here on: INI::OD). INI::OD is
+specification for INI as used by this module (from here on: Ini::OD). Ini::OD is
 specified to be compatible with most of the INI files out there, while also
 introduce several useful extensions.
 
@@ -124,7 +124,7 @@ A section line introduces a section:
 Whitespace before the "[" token is allowed. To write a section name with
 problematic characters (like "\n", "\0", "]", etc.), use quotes.
 
-INI::OD allows nested section using this syntax:
+Ini::OD allows nested section using this syntax:
 
  [Outer][Inner][Even more inner]...
 
@@ -227,6 +227,59 @@ You can use variables and calculations using the !expr directive.
 
 Note: since parsing is done in 1-pass, make sure that you define a parameter
 first before using it in expressions.
+
+=head2 Merging between sections
+
+Directive !merge is used to merge sections.
+
+ [default]
+ repeat=1
+ volume=100
+
+ ;!merge default
+ [steven]
+ file=/home/steven/song1.mp3
+ repeat=2
+
+ ;!merge default steven
+ [steven, car]
+ file=/home/steven/song2.mp3
+ volume=30
+
+=head2 Unsupported features
+
+Some INI implementation support other features, and listed below are those
+unsupported by Ini::OD, usually because the features are not popular:
+
+=over 4
+
+=item * Line continuation for multiline value
+
+ param=line 1 \
+ line 2\
+ line 3
+
+Supported by L<Config::IniFiles>. In Ini::OD, use quoting:
+
+ param="line 1 \nline 2\nline 3"
+
+=item * Heredoc syntax for array
+
+ param=<<EOT
+ value1
+ value2
+ EOT
+
+Supported by Config::IniFiles. In Ini::OD, use multiple assignment:
+
+ param=value1
+ param=value2
+
+=item * Deltas
+
+See Config::IniFiles. In Ini::OD, you can put history in comments.
+
+=back
 
 
 =head1 METHODS
