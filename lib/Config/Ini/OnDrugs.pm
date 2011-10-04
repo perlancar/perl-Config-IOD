@@ -275,10 +275,6 @@ Supported by Config::IniFiles. In Ini::OD, use multiple assignment:
  param=value1
  param=value2
 
-=item * Deltas
-
-See Config::IniFiles. In Ini::OD, you can put history in comments.
-
 =back
 
 
