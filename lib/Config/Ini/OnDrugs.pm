@@ -128,11 +128,6 @@ Ini::OD allows nested section using this syntax:
 
  [Outer][Inner][Even more inner]...
 
-Comment after section name and closing "]" is allowed:
-
- [Section] ; some comment
- [Section2] #!another comment, directive not allowed and assumed as comment
-
 =head2 Parameter line
 
 Parameter lines specify name value pairs:
@@ -142,7 +137,7 @@ Parameter lines specify name value pairs:
 
 Parameter name and value can be quoted:
 
- "Contains\nnewline" = "\0" ; this is a comment, no directive allowed
+ "Contains\nnewline" = "\0"
 
 Whitespace before parameter name, and whitespaces between the "=" character are
 allowed and ignored. Trailing whitespace is not ignored for unquoted values.
@@ -183,7 +178,7 @@ To specify hash value, use nested section:
  ; param is {foo=>"1 ; a", bar=>"2"}
  [Section][param]
  foo=1 ; a
- bar="2" ; b
+ bar="2"
 
 Normally a parameter line should occur after section line, so that parameter
 belongs to the section. But a parameter line is also allowed before section
