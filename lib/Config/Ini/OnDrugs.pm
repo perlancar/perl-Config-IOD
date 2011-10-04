@@ -5,14 +5,146 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-# VERSION
-
 use Exporter::Lite;
 our @EXPORT_OK = qw();
 
+# VERSION
+
 our %SPEC;
 
-$SPEC{} = {
+our $re_hexdig  = qr/(?:[0-9A-Fa-f])/;
+# XXX: wide hex not supported yet
+our $re_strpart = qr/(?:
+                         [^"\\]+ |
+                         \\[tnrfbae"'\\\$] |
+                         \\0[0-7]{0,3} |
+                         \\x$re_hexdig {1,2}
+                     )/x;
+our $re_string  = qr/(?: $re_strpart* )/x;
+# simpler, faster regex for matching qs on left s of =
+our $re_quotedl = qr/(?:(?:"[^"\\]|\\"|\\)*")/x;
+# for matching on right side
+our $re_quotedr = qr/(?:".*")/x;
+our $re_quoted  = qr/(?:\"$re_string\")/x;
+our $re_S       = qr/^\s*
+                     \[ (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"\]]))\]
+                     \s*
+                    /x;
+our $re_P       = qr/^\s*
+                     (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"=]+) )
+                     \s* = \s*
+                     (?:(?<value_quoted>$re_quotedr) \s* | (?<value_bare>.*?) )
+                     $
+                    /x;
+our $re_D_arg   = qr/$re_quotedl | [^"\s]+/x;
+our $re_D_args  = qr/(?:$re_D_arg (\s+ $re_D_arg)*)/x;
+our $re_D       = qr/^\s*
+                     [;#]
+                     !(?<name>\w+) (?: \s+ $re_D_args )?
+                     \s*$
+                    /x;
+
+sub _dieline {
+    my ($self, $msg) = @_;
+    die "Parse line #$self->{_curline}: $msg";
+}
+
+sub _warnline {
+    my ($self, $msg) = @_;
+    $log->warn("Parse line #$self->{_curline}: $msg");
+}
+
+sub _parse_quoted {
+    my ($self, $str, $quoted) = @_;
+    state $escapes = {
+        '"' => '"', "'" => "'", "\\" => "\\",
+        "r" => "\r", "t" => "\t", "n" => "\n",
+        "f" => "\f", "a" => "\a", "b" => "\b",
+        "e" => "\e", '$' => '$',
+    };
+    if ($quoted) {
+        $str =~ s/\A"//
+            or $self->_dieline("String without opening quotes: $str");
+        $str =~ s/"\z//
+            or $self->_dieline("String without closing quotes: $str");
+    }
+    if ($str !~ /\A$re_string\z/) {
+        $self->_dieline("Invalid string syntax: $str");
+    }
+    my @el = $str =~ /($re_strpart)/g;
+    for (@el) {
+        if (/^\\0(.*)/) {
+            $_ = chr(oct($1));
+        } elsif (/^\\x(.+)/) {
+            $_ = chr(hex($1));
+        } elsif (/^\\(.)/) {
+            $_ = $escapes->{$1};
+        }
+    }
+    join "", @el;
+}
+
+# input must be valid raw args
+sub __split_args {
+    my ($args) = @_;
+    my @args;
+    while ($args =~ s/($re_D_arg)\s*//) {
+        push @args, $1;
+    }
+    @args;
+}
+
+# parsing: create @lines where each line is [RAW_LINE, TYPE, (type-specific data
+# ...)]. TYPE is either "B" (blank line), "C" (comment), "D" (directive), "S"
+# (section), or "P" (parameter). "B" and "C" lines do not have type-specific
+# data.
+#
+# data for "P":
+
+sub _parse {
+    my ($self, $raw) = @_;
+
+    if (!ref($raw) || ref($raw) ne 'ARRAY') {
+        $raw = [split /^/, $raw];
+    }
+    my @lines;
+    $self->{_curline} = 0;
+    for my $line0 (@$raw) {
+        $self->{_curline}++;
+        my @line = ($line0);
+        if ($line0 !~ /\S/) {
+            push @line, "B";
+        } elsif ($line0 =~ /^\s*[;#](.*)/) {
+            my $arg = $1;
+            if ($arg =~ /^\!\w+(?:\s+|$)/) {
+                if ($arg =~ $re_D) {
+                    push @line, "D", $+{name}, __split_args($+{args});
+                } else {
+                    $self->_warnline("Invalid directive syntax");
+                }
+            } else {
+                push @line, "C";
+            }
+        } elsif ($line0 =~ /^\s*\[/) {
+            push @line, "S", ;
+        } elsif ($line0 =~ /=/) {
+            push @line, "P", ;
+        } else {
+            $self->_dieline("Unknown line: $line0");
+        }
+
+        push @lines, \@line;
+    }
+    $self->{lines} = \@lines;
+}
+
+sub new {
+    my ($class, $raw) = @_;
+    my $self = bless {}, $class;
+    #$self->_parse($raw);
+}
+
+$SPEC{a} = {
     summary => '',
     description => '',
     args => {
