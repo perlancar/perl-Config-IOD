@@ -33,7 +33,7 @@ sub test_parse {
             }
         }
         if (defined $args{post_test}) {
-            is($res, $args{res}, "result");
+            $args{post_test}->($ini);
         }
     };
 }
@@ -44,8 +44,42 @@ test_parse(ini => " ", num_lines=>1, types=>["B"], name=>"blank line");
 test_parse(ini => "foo=1", num_lines=>1, types=>["P"], name=>"parameter");
 test_parse(ini => "; foo=1", num_lines=>1, types=>["C"], name=>"comment");
 test_parse(ini => " #foo=1", num_lines=>1, types=>["C"], name=>"comment 2");
-test_parse(ini => ";!foo 1", num_lines=>1, types=>["D"], name=>"directive");
+test_parse(ini => ";!array 1", num_lines=>1, types=>["D"], name=>"directive");
+test_parse(ini => ";! x", num_lines=>1, types=>["C"], name=>"non directive 1");
+test_parse(ini => "; !x", num_lines=>1, types=>["C"], name=>"non directive 2");
 test_parse(ini => "[foo bar]", num_lines=>1, types=>["S"], name=>"section");
+
+my $ini1 = <<'_';
+[section1]
+  foo=1
+bar = 2; 3
+bar 2= "quoted 1"
+"bar 3" = "quoted \"2\""
+
+
+;!merge section1
+[section2]
+;!null
+foo=
+;!array 1
+bar = 2
+;!array 0
+bar 2=
+baz=element 1
+baz=element 2
+baz = element 3
+
+[section2][sub1][subsub1]
+[section2] [sub2] [subsub1]
+_
+test_parse(
+    ini => $ini1, num_lines=>21,
+    name=>"basics 1",
+    post_test=>sub {
+        my ($ini) = @_;
+        use Data::Dump; dd $ini;
+    },
+);
 
 DONE_TESTING:
 done_testing();

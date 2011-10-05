@@ -22,16 +22,16 @@ our $re_strpart = qr/(?:
                      )/x;
 our $re_string  = qr/(?: $re_strpart* )/x;
 # simpler, faster regex for matching qs on left s of =
-our $re_quotedl = qr/(?:(?:"[^"\\]|\\"|\\)*")/x;
+our $re_quotedl = qr/(?:"(?:[^"\\]|\\"|\\)*")/x;
 # for matching on right side
-our $re_quotedr = qr/(?:".*")/x;
+our $re_quotedr = qr/(?:".*?")/x;
 our $re_quoted  = qr/(?:\"$re_string\")/x;
 our $re_S       = qr/^\s*
                      \[ (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"\]]))\]
                      \s*
                     /x;
 our $re_P       = qr/^\s*
-                     (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"=]+) )
+                     (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"=]+?) )
                      \s* = \s*
                      (?:(?<value_quoted>$re_quotedr) \s* | (?<value_bare>.*?) )
                      $
@@ -60,6 +60,7 @@ sub _warnline {
 
 sub _parse_quoted {
     my ($self, $str, $quoted) = @_;
+    $quoted //= 1;
     state $escapes = {
         '"' => '"', "'" => "'", "\\" => "\\",
         "r" => "\r", "t" => "\t", "n" => "\n",
@@ -98,6 +99,42 @@ sub _split_args {
     @args;
 }
 
+sub dir_array {
+    my ($self, $args) = @_;
+    state $sub = sub {
+        my ($self, $args, $line) = @_;
+        if ($line->[2] =~ /\S/) {
+            $self->_warnline("Nulling non-empty value: $line->[2]");
+        }
+        $line->[2] = undef;
+    };
+    $self->{_next_param_hooks} = [$sub, 50];
+}
+
+sub dir_null {
+    my ($self, $args) = @_;
+    state $sub = sub {
+        my ($self, $args, $line) = @_;
+        if ($line->[2] =~ /\S/) {
+            $self->_warnline("Nulling non-empty value: $line->[2]");
+        }
+        $line->[2] = undef;
+    };
+    $self->{_next_param_hooks} = [$sub, 50];
+}
+
+sub dir_include {
+    my ($self, $args) = @_;
+}
+
+sub dir_expr {
+    my ($self, $args) = @_;
+}
+
+sub dir_merge {
+    my ($self, $args) = @_;
+}
+
 # parsing: create @lines where each line is [RAW_LINE, TYPE, (type-specific data
 # ...)]. TYPE is either "B" (blank line), "C" (comment), "D" (directive), "S"
 # (section), or "P" (parameter). "B" and "C" lines do not have type-specific
@@ -112,7 +149,16 @@ sub _parse {
         $raw = [split /^/, $raw];
     }
     my @lines;
+
+    $self->{_tree} = {};
     $self->{_curline} = 0;
+    $self->{_next_section_hooks} = [];
+    $self->{_next_param_hooks} = [];
+    $self->{_config} = {};
+    $self->{_cursection} = $self->{default_section};
+
+    my @section_hooks;
+    my @param_hooks;
     for my $line0 (@$raw) {
         $self->{_curline}++;
         my @line = ($line0);
@@ -122,18 +168,36 @@ sub _parse {
             my $arg = $1;
             if ($arg =~ /^!\w+(?:\s+|$)/) {
                 if ($line0 =~ $re_D) {
+                    my $name = $+{name};
+                    my $meth = "dir_$name";
+                    unless ($self->can($meth)) {
+                        $self->_dieline("Unknown directive: $name");
+                    }
                     my $args = $+{args} // "";
-                    push @line, "D", $+{name}, $self->_split_args($args);
+                    my @args = $self->_split_args($args);
+                    $self->$meth(\@args);
+                    push @line, "D", $name, \@args;
                 } else {
                     $self->_warnline("Invalid directive syntax");
                 }
             } else {
                 push @line, "C";
             }
-        } elsif ($line0 =~ /^\s*\[/) {
+        } elsif ($line0 =~ /^\s*\[(.*)\]/) {
             push @line, "S", ;
+            $self->{_cursection} = $1;
+            # XXX
         } elsif ($line0 =~ /=/) {
-            push @line, "P", ;
+            if ($line0 =~ $re_P) {
+                my $name = defined($+{name_quoted}) ?
+                    $self->_parse_quoted($+{name_quoted}) : $+{name_bare};
+                my $value = defined($+{value_quoted}) ?
+                    $self->_parse_quoted($+{value_quoted}) : $+{value_bare};
+                push @line, "P", $name, $value;
+                $self->{_config}{ $self->{_cursection} }{$name} = $value;
+            } else {
+                $self->_dieline("Invalid parameter assignment syntax");
+            }
         } else {
             $self->_dieline("Unknown line: $line0");
         }
@@ -141,11 +205,26 @@ sub _parse {
         push @lines, \@line;
     }
     $self->{_lines} = \@lines;
+
+    # clean parsing work variables
+    undef $self->{_curline};
+    undef $self->{_next_param_hooks};
+    undef $self->{_next_section_hooks};
 }
 
 sub new {
-    my ($class, $raw) = @_;
+    my ($class, $raw, $opts) = @_;
+    $opts //= {};
     my $self = bless {}, $class;
+
+    for my $k (keys %$opts) {
+        die "Unknown attribute: $k" unless
+            $k =~ /\A(default_section)\z/;
+        $self->{$k} = $opts->{$k};
+    }
+
+    $self->{default_section} //= 'DEFAULT';
+
     $self->_parse($raw) if defined($raw);
     $self;
 }
