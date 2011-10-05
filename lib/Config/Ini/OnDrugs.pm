@@ -89,8 +89,8 @@ sub _parse_quoted {
 }
 
 # input must be valid raw args
-sub __split_args {
-    my ($args) = @_;
+sub _split_args {
+    my ($self, $args) = @_;
     my @args;
     while ($args =~ s/($re_D_arg)\s*//) {
         push @args, $1;
@@ -120,9 +120,10 @@ sub _parse {
             push @line, "B";
         } elsif ($line0 =~ /^\s*[;#](.*)/) {
             my $arg = $1;
-            if ($arg =~ /^\!\w+(?:\s+|$)/) {
-                if ($arg =~ $re_D) {
-                    push @line, "D", $+{name}, __split_args($+{args});
+            if ($arg =~ /^!\w+(?:\s+|$)/) {
+                if ($line0 =~ $re_D) {
+                    my $args = $+{args} // "";
+                    push @line, "D", $+{name}, $self->_split_args($args);
                 } else {
                     $self->_warnline("Invalid directive syntax");
                 }
@@ -139,7 +140,7 @@ sub _parse {
 
         push @lines, \@line;
     }
-    $self->{lines} = \@lines;
+    $self->{_lines} = \@lines;
 }
 
 sub new {

@@ -18,7 +18,7 @@ sub test_parse {
         my $eval_err = $@;
         if ($args{dies}) {
             ok($eval_err, "dies");
-        } elsif (defined $args{dies}) {
+        } else {
             ok(!$eval_err, "doesn't die") or diag $eval_err;
         }
         if (defined $args{res}) {
