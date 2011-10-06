@@ -14,7 +14,7 @@ sub test_parse {
     my %args = @_;
     subtest $args{name} // $args{str} => sub {
         my $res;
-        eval { $res = $ini->_parse_quoted($args{str}) };
+        eval { $res = $ini->_parse_quoted($args{str}, 0) };
         my $eval_err = $@;
         if ($args{dies}) {
             ok($eval_err, "dies");

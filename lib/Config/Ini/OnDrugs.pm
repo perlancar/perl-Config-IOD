@@ -135,14 +135,11 @@ sub dir_merge {
     my ($self, $args) = @_;
 }
 
-# parsing: create @lines where each line is [RAW_LINE, TYPE, (type-specific data
-# ...)]. TYPE is either "B" (blank line), "C" (comment), "D" (directive), "S"
-# (section), or "P" (parameter). "B" and "C" lines do not have type-specific
-# data.
+# parse raw ini untuk an array of lines. each line is an arrayref [RAW_LINE,
+# TYPE, (type-specific data ...)]. TYPE is either "B" (blank line), "C"
+# (comment), "D" (directive), "S" (section), or "P" (parameter).
 #
-# data for "P":
-
-sub _parse {
+sub _parse_raw {
     my ($self, $raw) = @_;
 
     if (!ref($raw) || ref($raw) ne 'ARRAY') {
@@ -150,21 +147,20 @@ sub _parse {
     }
     my @lines;
 
-    $self->{_tree} = {};
     $self->{_curline} = 0;
-    $self->{_next_section_hooks} = [];
-    $self->{_next_param_hooks} = [];
-    $self->{_config} = {};
-    $self->{_cursection} = $self->{default_section};
 
     my @section_hooks;
     my @param_hooks;
     for my $line0 (@$raw) {
         $self->{_curline}++;
         my @line = ($line0);
+
         if ($line0 !~ /\S/) {
+
             push @line, "B";
+
         } elsif ($line0 =~ /^\s*[;#](.*)/) {
+
             my $arg = $1;
             if ($arg =~ /^!\w+(?:\s+|$)/) {
                 if ($line0 =~ $re_D) {
@@ -175,7 +171,6 @@ sub _parse {
                     }
                     my $args = $+{args} // "";
                     my @args = $self->_split_args($args);
-                    $self->$meth(\@args);
                     push @line, "D", $name, \@args;
                 } else {
                     $self->_warnline("Invalid directive syntax");
@@ -183,33 +178,67 @@ sub _parse {
             } else {
                 push @line, "C";
             }
+
         } elsif ($line0 =~ /^\s*\[(.*)\]/) {
-            push @line, "S", ;
-            $self->{_cursection} = $1;
-            # XXX
+
+            push @line, "S", $1; # XXX
+
         } elsif ($line0 =~ /=/) {
+
             if ($line0 =~ $re_P) {
                 my $name = defined($+{name_quoted}) ?
                     $self->_parse_quoted($+{name_quoted}) : $+{name_bare};
                 my $value = defined($+{value_quoted}) ?
                     $self->_parse_quoted($+{value_quoted}) : $+{value_bare};
                 push @line, "P", $name, $value;
-                $self->{_config}{ $self->{_cursection} }{$name} = $value;
             } else {
                 $self->_dieline("Invalid parameter assignment syntax");
             }
+
         } else {
+
             $self->_dieline("Unknown line: $line0");
         }
 
         push @lines, \@line;
     }
-    $self->{_lines} = \@lines;
 
     # clean parsing work variables
     undef $self->{_curline};
+
+    $self->{_lines} = \@lines;
+}
+
+# parse array of lines into tree of section/params.
+sub _parse_lines {
+    my ($self) = @_;
+
+    $self->{_next_section_hooks} = [];
+    $self->{_next_param_hooks} = [];
+    $self->{_cursection} = $self->{default_section};
+    $self->{_tree} = {};
+
+    for my $line (@{$self->{_lines}}) {
+        my $type = $line->[1];
+        if ($type eq 'S') {
+            my $name = $line->[2];
+            $self->{_cursection} = $line->[2];
+        } elsif ($type eq 'D') {
+            my ($name, $args) = ($line->[2], $line->[3]);
+            my $meth = "dir_$name";
+            $self->$meth($args);
+        } elsif ($type eq 'P') {
+            my ($name, $value) = ($line->[2], $line->[3]);
+            $self->{_tree}{ $self->{_cursection} }{$name} = $value;
+        }
+    }
+
+    # clean parseing work variables
+    undef $self->{_cursection};
     undef $self->{_next_param_hooks};
     undef $self->{_next_section_hooks};
+
+    $self->{_tree};
 }
 
 sub new {
@@ -225,9 +254,26 @@ sub new {
 
     $self->{default_section} //= 'DEFAULT';
 
-    $self->_parse($raw) if defined($raw);
+    if (defined $raw) {
+        $self->_parse_raw($raw);
+        $self->_parse_lines;
+    }
     $self;
 }
+
+sub get_section {
+    my ($self, $section) = @_;
+    $self->{_tree}{$section};
+}
+
+sub get_value {
+    my ($self, $section, $param) = @_;
+    my $s = $self->get_section($section);
+    return undef unless $s;
+    $s->{$param};
+}
+
+# procedural functions
 
 $SPEC{a} = {
     summary => '',
@@ -243,8 +289,23 @@ __END__
 =head1 SYNOPSIS
 
  # oo interface
+ use File::Slurp;
  use Config::Ini::OnDrugs;
- my $ini = Config::Ini::
+ my $ini = Config::Ini::OnDrugs->new(scalar read_file("file.ini"));
+ my $section = $ini->get_section("Section"); # a hashref of param=>values
+ my $val = $ini->get_value("Section", "Parameter");
+
+ # not yet implemented
+ $ini->add_section("Section2"); # empty section
+ $ini->add_section("Section3", {Param=>Value, ...}); # section with values
+ $ini->delete_section("Section2");
+ $ini->set_value("Section", "Param", "New Value");
+ $ini->delete_value("Section", "Param");
+
+ $ini->as_tree;
+
+ # dump back as string
+ $ini->as_string;
 
  # procedural interface
  use Config::Ini::OnDrugs qw(
@@ -264,6 +325,9 @@ __END__
 
 
 =head1 DESCRIPTION
+
+IMPLEMENTATION NOTE: PRELIMINARY VERSION, SPEC MIGHT STILL CHANGE ONE OR TWO
+BITS. ONLY GET_SECTION() AND GET_PARAM() IS IMPLEMENTED.
 
 This module provides INI reading/writing class/functions. There are several
 other INI modules on CPAN; this one focuses on round trip parsing, includes,
@@ -359,37 +423,30 @@ Parameter name and value can be quoted:
 Whitespace before parameter name, and whitespaces between the "=" character are
 allowed and ignored. Trailing whitespace is not ignored for unquoted values.
 
-To specify a C<null> (C<undef>) value, use the !null directive and an empty
-value:
+To specify an C<undef> (C<null>) value, use expression:
 
- ; empty string
- param1=
+ ;!expr
+ param1=undef
 
- ;!null
- param2=
+To specify an array value, use multiple lines or expression:
 
-To specify an array value, use multiple lines:
-
- ; ["foo", "bar"]
  param=foo
  param=bar
 
-To specify an array with a single value, use the !array directive:
+ ;!expr
+ param=["foo", "bar"]
 
- ; an array [foo]
- ;!array
- param=foo
+To specify an array with a single value:
 
- ; a string "foo"
- param2=foo
+ ;!expr
+ param=["foo"]
 
 To specify an array with an empty element:
 
- ; []
- ;!array 0
- param=
+ ;!expr
+ param=[]
 
-To specify hash value, use nested section:
+To specify hash value, use nested section or an expression:
 
  [Section]
  ; param is {foo=>"1 ; a", bar=>"2"}
@@ -397,7 +454,10 @@ To specify hash value, use nested section:
  foo=1 ; a
  bar="2"
 
-Normally a parameter line should occur after section line, so that parameter
+ ;!expr
+ param={"foo" => 1, "bar" => 2}
+
+Normally a parameter line should occur below section line, so that parameter
 belongs to the section. But a parameter line is also allowed before section
 line, in which it will belong to the default section specified in the parser.
 

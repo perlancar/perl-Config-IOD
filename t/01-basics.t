@@ -77,7 +77,10 @@ test_parse(
     name=>"basics 1",
     post_test=>sub {
         my ($ini) = @_;
-        use Data::Dump; dd $ini;
+        #use Data::Dump; dd $ini->{_tree};
+        is($ini->get_value("section1", "foo"), "1", "get_value 1");
+        is($ini->get_value("section1", "bar"), "2; 3", "get_value 2");
+        is($ini->get_value("section1", "bar 3"), 'quoted "2"', "get_value 3");
     },
 );
 
