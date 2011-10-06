@@ -468,7 +468,8 @@ Quoting is done with the double-quote (L<">) character. Known escapes are \',
 (backspace), \a (bell), \0, octal form ("\0377"), hex form ("\xff") and wide-hex
 form (\x{263a}).
 
-Quoting is allowed for section name in section line,
+Quoting is allowed for section name in section line and for parameter name and
+value in parameter line.
 
 =head2 Includes
 
