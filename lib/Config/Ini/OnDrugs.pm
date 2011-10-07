@@ -1,12 +1,17 @@
 package Config::Ini::OnDrugs;
 
+# TODO: option to only allow include if owner is the same
+
 use 5.010;
 use strict;
 use warnings;
 use Log::Any '$log';
 
-use Cwd;
+use Cwd qw(abs_path);
 use Exporter::Lite;
+use File::Slurp;
+use File::chdir;
+
 our @EXPORT_OK = qw();
 
 # VERSION
@@ -51,22 +56,30 @@ our $re_D_arg   = qr/$re_quotedl | [^"\s]+/x;
 our $re_D_args  = qr/(?:$re_D_arg (\s+ $re_D_arg)*)/x;
 our $re_D       = qr/^\s*
                      [;#]
-                     !(?<name>\w+) (?: \s+ $re_D_args )?
+                     !(?<name>\w+) (?<args> \s+ $re_D_args )?
                      \s*$
                     /x;
 
+sub _fmtmsg {
+    my ($self, $msg, $prefix) = @_;
+    join("",
+         $prefix // "",
+         (defined($self->{_curfile}) ?
+              " in file `$self->{_curfile}`" : ""),
+         (defined($self->{_curline}) ?
+              " at line #$self->{_curline}" : ""),
+        ": $msg"
+    );
+}
+
 sub _dieline {
     my ($self, $msg) = @_;
-    die "Parse error".(defined($self->{_curline}) ?
-                           " line #$self->{_curline}" : "").
-        ": $msg";
+    die $self->_fmtmsg($msg, "Parse error");
 }
 
 sub _warnline {
     my ($self, $msg) = @_;
-    $log->warn("Parse error".(defined($self->{_curline}) ?
-                                  " line #$self->{_curline}" : "").
-                                      ": $msg");
+    $log->warn($self->_fmtmsg($msg), "Parse warning");
 }
 
 sub _parse_quoted {
@@ -110,21 +123,64 @@ sub _split_args {
     @args;
 }
 
-sub dir_include {
-    my ($self, $args) = @_;
+sub _include {
+    my ($self, $filename) = @_;
+    $log->tracef("Including %s ...", $filename);
+    my $absfilename = abs_path($filename);
+    (-f $filename) && $absfilename or
+        $self->_dieline("Can't load file $filename: not found (cwd=".
+                    Cwd::cwd().")");
+    $self->{_include_stack} //= [];
+    if ($absfilename ~~ @{$self->{_include_stack}}) {
+        $self->_dieline("Recursive include: $absfilename");
+    }
+    my $dir;
+    if ($filename =~ m!/!) {
+        $dir = $filename;
+        $dir =~ s!(.+)/(.*)!$1!;
+    } else {
+        $dir = "";
+    }
+
+    my $ct;
+    eval { $ct = read_file($filename) };
+    my $eval_err = $@;
+    if ($eval_err) {
+        $self->_dieline("Can't load file $filename: $eval_err");
+    }
+    push @CWD, $dir if length($dir);
+    local $self->{_curline};
+    local $self->{_curfile} = $absfilename;
+    push @{$self->{_include_stack}}, $absfilename;
+    $self->{_include_level}++;
+    $self->_parse_raw($ct);
+    $self->{_include_level}--;
+    pop @{$self->{_include_stack}};
+
+    pop @CWD if length($dir);
 }
 
+sub dirmeta_include { {phase=>1} }
+sub dir_include {
+    my ($self, $args) = @_;
+    my $filename = $args->[0];
+    $self->_include($filename);
+}
+
+sub dirmeta_expr { {phase=>2} }
 sub dir_expr {
     my ($self, $args) = @_;
 }
 
+sub dirmeta_merge { {phase=>2} }
 sub dir_merge {
     my ($self, $args) = @_;
 }
 
 # parse raw ini untuk an array of lines. each line is an arrayref [RAW_LINE,
-# TYPE, (type-specific data ...)]. TYPE is either "B" (blank line), "C"
-# (comment), "D" (directive), "S" (section), or "P" (parameter).
+# TYPE(*)?, (type-specific data ...)]. TYPE is either "B" (blank line), "C"
+# (comment), "D" (directive), "S" (section), or "P" (parameter). * suffix
+# indicates that line comes from an included file.
 #
 sub _parse_raw {
     my ($self, $raw) = @_;
@@ -132,9 +188,12 @@ sub _parse_raw {
     if (!ref($raw) || ref($raw) ne 'ARRAY') {
         $raw = [split /^/, $raw];
     }
-    my @lines;
 
     $self->{_curline} = 0;
+
+    if ($self->{_include_level} == 0) {
+        $self->{_lines} = [];
+    }
 
     my @section_hooks;
     my @param_hooks;
@@ -152,13 +211,21 @@ sub _parse_raw {
             if ($arg =~ /^!\w+(?:\s+|$)/) {
                 if ($line0 =~ $re_D) {
                     my $name = $+{name};
+                    my $args0 = $+{args} // "";
                     my $meth = "dir_$name";
                     unless ($self->can($meth)) {
                         $self->_dieline("Unknown directive: $name");
                     }
-                    my $args = $+{args} // "";
-                    my @args = $self->_split_args($args);
+                    my @args = $self->_split_args($args0);
                     push @line, "D", $name, \@args;
+                    my $methmt = "dirmeta_$name";
+                    unless ($self->can($methmt)) {
+                        $self->_dieline("Directive doesn't have meta: $name");
+                    }
+                    my $meta = $self->$methmt($name);
+                    if ($meta->{phase} == 1) {
+                        $self->$meth(\@args);
+                    }
                 } else {
                     $self->_warnline("Invalid directive syntax");
                 }
@@ -187,13 +254,14 @@ sub _parse_raw {
             $self->_dieline("Unknown line: $line0");
         }
 
-        push @lines, \@line;
+        $line[COL_TYPE] .= "*" if $self->{_include_level} > 0;
+        push @{$self->{_lines}}, \@line;
     }
 
     # clean parsing work variables
-    undef $self->{_curline};
-
-    $self->{_lines} = \@lines;
+    if ($self->{_include_level} == 0) {
+        undef $self->{_curline};
+    }
 }
 
 # parse array of lines into tree of section/params.
@@ -212,8 +280,12 @@ sub _parse_lines {
             $self->{_cursection} = $line->[2];
         } elsif ($type eq 'D') {
             my ($name, $args) = ($line->[COL_D_NAME], $line->[COL_D_ARGS]);
-            my $meth = "dir_$name";
-            $self->$meth($args);
+            my $methmt = "dirmeta_$name";
+            my $meta = $self->$methmt($name);
+            if ($meta->{phase} == 2) {
+                my $meth = "dir_$name";
+                $self->$meth($args);
+            }
         } elsif ($type eq 'P') {
             my ($name, $value) = ($line->[COL_P_NAME], $line->[COL_P_VALUE]);
             $self->{_tree}{ $self->{_cursection} }{$name} = $value;
@@ -229,21 +301,26 @@ sub _parse_lines {
 }
 
 sub new {
-    my ($class, $raw, $opts) = @_;
-    $opts //= {};
+    my ($class, %args) = @_;
+
     my $self = bless {}, $class;
 
-    for my $k (keys %$opts) {
-        die "Unknown attribute: $k" unless
-            $k =~ /\A(default_section)\z/;
-        $self->{$k} = $opts->{$k};
+    for my $k (keys %args) {
+        die "Unknown argument: $k" unless
+            $k =~ /\A(file|str|default_section)\z/;
+        $self->{$k} = $args{$k};
     }
-
     $self->{default_section} //= 'DEFAULT';
-
     $self->{_include_stack} = [];
-    if (defined $raw) {
-        $self->_parse_raw($raw);
+
+    if (defined($self->{file}) || defined($self->{str})) {
+        if (defined $self->{file}) {
+            $self->{_include_level} = -1;
+            $self->_include($self->{file});
+        } elsif (defined $self->{str}) {
+            $self->{_include_level} = 0;
+            $self->_parse_raw($self->{str});
+        }
         $self->_parse_lines;
     }
     $self;
