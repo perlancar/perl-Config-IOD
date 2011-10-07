@@ -5,10 +5,21 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
+use Cwd;
 use Exporter::Lite;
 our @EXPORT_OK = qw();
 
 # VERSION
+
+use constant {
+    COL_RAW     => 0,
+    COL_TYPE    => 1, # [BCDPS] \*? -> * if remote
+    COL_D_NAME  => 2,
+    COL_D_ARGS  => 3,
+    COL_P_NAME  => 2,
+    COL_P_VALUE => 3,
+    COL_S_NAMES => 2,
+};
 
 our %SPEC;
 
@@ -97,30 +108,6 @@ sub _split_args {
         push @args, $1;
     }
     @args;
-}
-
-sub dir_array {
-    my ($self, $args) = @_;
-    state $sub = sub {
-        my ($self, $args, $line) = @_;
-        if ($line->[2] =~ /\S/) {
-            $self->_warnline("Nulling non-empty value: $line->[2]");
-        }
-        $line->[2] = undef;
-    };
-    $self->{_next_param_hooks} = [$sub, 50];
-}
-
-sub dir_null {
-    my ($self, $args) = @_;
-    state $sub = sub {
-        my ($self, $args, $line) = @_;
-        if ($line->[2] =~ /\S/) {
-            $self->_warnline("Nulling non-empty value: $line->[2]");
-        }
-        $line->[2] = undef;
-    };
-    $self->{_next_param_hooks} = [$sub, 50];
 }
 
 sub dir_include {
@@ -219,16 +206,16 @@ sub _parse_lines {
     $self->{_tree} = {};
 
     for my $line (@{$self->{_lines}}) {
-        my $type = $line->[1];
+        my ($type) = $line->[COL_TYPE] =~ /(.)/;
         if ($type eq 'S') {
-            my $name = $line->[2];
+            my $name = $line->[COL_S_NAMES];
             $self->{_cursection} = $line->[2];
         } elsif ($type eq 'D') {
-            my ($name, $args) = ($line->[2], $line->[3]);
+            my ($name, $args) = ($line->[COL_D_NAME], $line->[COL_D_ARGS]);
             my $meth = "dir_$name";
             $self->$meth($args);
         } elsif ($type eq 'P') {
-            my ($name, $value) = ($line->[2], $line->[3]);
+            my ($name, $value) = ($line->[COL_P_NAME], $line->[COL_P_VALUE]);
             $self->{_tree}{ $self->{_cursection} }{$name} = $value;
         }
     }
@@ -254,6 +241,7 @@ sub new {
 
     $self->{default_section} //= 'DEFAULT';
 
+    $self->{_include_stack} = [];
     if (defined $raw) {
         $self->_parse_raw($raw);
         $self->_parse_lines;
