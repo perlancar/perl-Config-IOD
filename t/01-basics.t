@@ -13,7 +13,7 @@ sub test_parse {
     subtest $args{name} => sub {
         my $res;
         my $ini;
-        eval { $ini = Config::Ini::OnDrugs->new($args{ini}) };
+        eval { $ini = Config::Ini::OnDrugs->new(str=>$args{ini}) };
         my $eval_err = $@;
         if ($args{dies}) {
             ok($eval_err, "dies");
@@ -27,7 +27,7 @@ sub test_parse {
         }
         if ($args{types}) {
             for my $i (0..@{$args{types}}-1) {
-                my $t0 = $ini->{_lines}[$i][1];
+                my $t0 = $ini->{_lines}[$i][2];
                 my $t = $args{types}[$i];
                 is($t0, $t, "type (line ".($i+1).") = $t") or diag $t0;
             }

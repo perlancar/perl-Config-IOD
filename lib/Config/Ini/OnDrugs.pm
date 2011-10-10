@@ -18,12 +18,14 @@ our @EXPORT_OK = qw();
 
 use constant {
     COL_RAW     => 0,
-    COL_TYPE    => 1, # [BCDPS] \*? -> * if remote
-    COL_D_NAME  => 2,
-    COL_D_ARGS  => 3,
-    COL_P_NAME  => 2,
-    COL_P_VALUE => 3,
-    COL_S_NAMES => 2,
+    COL_INCLUDE => 1, # 1 if line is from included file
+    COL_TYPE    => 2, # [BCDPS]
+
+    COL_D_NAME  => 3,
+    COL_D_ARGS  => 4,
+    COL_P_NAME  => 3,
+    COL_P_VALUE => 4,
+    COL_S_NAMES => 3,
 };
 
 our %SPEC;
@@ -199,11 +201,13 @@ sub _parse_raw {
     my @param_hooks;
     for my $line0 (@$raw) {
         $self->{_curline}++;
-        my @line = ($line0);
+        my @line;
+        $line[COL_RAW] = $line0;
+        $line[COL_INCLUDE] = $self->{_include_level} > 0;
 
         if ($line0 !~ /\S/) {
 
-            push @line, "B";
+            $line[COL_TYPE] = "B";
 
         } elsif ($line0 =~ /^\s*[;#](.*)/) {
 
@@ -217,7 +221,9 @@ sub _parse_raw {
                         $self->_dieline("Unknown directive: $name");
                     }
                     my @args = $self->_split_args($args0);
-                    push @line, "D", $name, \@args;
+                    $line[COL_TYPE]   = "D";
+                    $line[COL_D_NAME] = $name;
+                    $line[COL_D_ARGS] = \@args;
                     my $methmt = "dirmeta_$name";
                     unless ($self->can($methmt)) {
                         $self->_dieline("Directive doesn't have meta: $name");
@@ -230,12 +236,13 @@ sub _parse_raw {
                     $self->_warnline("Invalid directive syntax");
                 }
             } else {
-                push @line, "C";
+                $line[COL_TYPE] = "C";
             }
 
         } elsif ($line0 =~ /^\s*\[(.*)\]/) {
 
-            push @line, "S", $1; # XXX
+            $line[COL_TYPE]    = "S";
+            $line[COL_S_NAMES] = [$1]; # XXX
 
         } elsif ($line0 =~ /=/) {
 
@@ -244,7 +251,9 @@ sub _parse_raw {
                     $self->_parse_quoted($+{name_quoted}) : $+{name_bare};
                 my $value = defined($+{value_quoted}) ?
                     $self->_parse_quoted($+{value_quoted}) : $+{value_bare};
-                push @line, "P", $name, $value;
+                $line[COL_TYPE]    = "P";
+                $line[COL_P_NAME]  = $name;
+                $line[COL_P_VALUE] = $value;
             } else {
                 $self->_dieline("Invalid parameter assignment syntax");
             }
@@ -254,7 +263,6 @@ sub _parse_raw {
             $self->_dieline("Unknown line: $line0");
         }
 
-        $line[COL_TYPE] .= "*" if $self->{_include_level} > 0;
         push @{$self->{_lines}}, \@line;
     }
 
@@ -274,10 +282,10 @@ sub _parse_lines {
     $self->{_tree} = {};
 
     for my $line (@{$self->{_lines}}) {
-        my ($type) = $line->[COL_TYPE] =~ /(.)/;
+        my $type = $line->[COL_TYPE];
         if ($type eq 'S') {
             my $name = $line->[COL_S_NAMES];
-            $self->{_cursection} = $line->[2];
+            $self->{_cursection} = $name->[0]; # XXX
         } elsif ($type eq 'D') {
             my ($name, $args) = ($line->[COL_D_NAME], $line->[COL_D_ARGS]);
             my $methmt = "dirmeta_$name";
