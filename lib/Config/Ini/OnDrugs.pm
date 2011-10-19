@@ -362,9 +362,8 @@ __END__
 =head1 SYNOPSIS
 
  # oo interface
- use File::Slurp;
  use Config::Ini::OnDrugs;
- my $ini = Config::Ini::OnDrugs->new(scalar read_file("file.ini"));
+ my $ini = Config::Ini::OnDrugs->new(file => "file.ini");
  my $section = $ini->get_section("Section"); # a hashref of param=>values
  my $val = $ini->get_value("Section", "Parameter");
 
@@ -380,8 +379,8 @@ __END__
  # dump back as string
  $ini->as_string;
 
- # procedural interface
- use Config::Ini::OnDrugs qw(
+ # procedural interface, Config::IOD is a shorter alias
+ use Config::IOD qw(
      ini_get
      ini_get_section
      ini get_value
