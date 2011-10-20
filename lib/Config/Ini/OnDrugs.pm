@@ -346,6 +346,11 @@ sub get_value {
     $s->{$param};
 }
 
+sub as_tree {
+    my ($self) = @_;
+    $self->{_tree};
+}
+
 # procedural functions
 
 $SPEC{a} = {
