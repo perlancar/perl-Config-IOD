@@ -353,12 +353,12 @@ sub as_tree {
 
 # procedural functions
 
-$SPEC{a} = {
-    summary => '',
-    description => '',
-    args => {
-    },
-};
+#$SPEC{a} = {
+#    summary => '',
+#    description => '',
+#    args => {
+#    },
+#};
 
 1;
 #ABSTRACT: Yet another INI reader/writer (round trip, includes, variables, nest)
