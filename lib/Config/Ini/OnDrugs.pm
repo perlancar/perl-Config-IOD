@@ -127,7 +127,11 @@ sub _split_args {
 
 sub _include {
     my ($self, $filename) = @_;
-    $log->tracef("Including %s ...", $filename);
+    if (@{$self->{_include_stack}}) {
+        $log->tracef("Including %s ...", $filename);
+    } else {
+        $log->tracef("Loading INI configuration %s ...", $filename);
+    }
     my $absfilename = abs_path($filename);
     (-f $filename) && $absfilename or
         $self->_dieline("Can't load file $filename: not found (cwd=".
