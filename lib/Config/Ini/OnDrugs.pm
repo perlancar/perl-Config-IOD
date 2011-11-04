@@ -486,9 +486,9 @@ A section line introduces a section:
  []
  [""]
 
-Whitespace before the "[" token is allowed. Comment after section is also
-allowed. To write a section name with problematic characters (like "\n", "\0",
-"]", etc.), use quotes.
+Whitespace before the "[" token is allowed. Comment is also allowed. To write a
+section name with problematic characters (like "\n", "\0", "]", etc.), use
+quotes.
 
 Ini::OD allows nested section using this syntax:
 
