@@ -410,8 +410,7 @@ __END__
 
 =head1 DESCRIPTION
 
-IMPLEMENTATION NOTE: PRELIMINARY VERSION, SPEC MIGHT STILL CHANGE ONE OR TWO
-BITS. ONLY GET_SECTION() AND GET_PARAM() IS IMPLEMENTED.
+NOTE: PRELIMINARY VERSION, PARTIAL IMPLEMENTATION
 
 This module provides INI reading/writing class/functions. There are several
 other INI modules on CPAN; this one focuses on round trip parsing, includes,
@@ -455,11 +454,15 @@ preserving comments/whitespaces.)
 
 Since the INI format does not have any formal specification, here is the
 specification for INI as used by this module (from here on: Ini::OD). Ini::OD is
-specified to be compatible with most of the INI files out there, while also
-introduce several useful extensions.
+an extended INI format but backwards-backwards compatible with most INI format
+out there. Most extensions are done using directive in comments.
 
 An INI file is a text file containing either comment lines, directive lines,
 blank lines, section lines, and parameter lines.
+
+=head2 Blank line
+
+Blank lines are ignored.
 
 =head2 Comment line
 
@@ -482,28 +485,26 @@ explained later in the text.
 A section line introduces a section:
 
  [Section Name]
- ["quoted [] section name"] ;comment
+ ["quoted [] section name"]
  []
  [""]
 
-Whitespace before the "[" token is allowed. Comment is also allowed. To write a
-section name with problematic characters (like "\n", "\0", "]", etc.), use
-quotes.
+Whitespace before the "[" token is allowed. Comment is not allowed at the end.
+To write a section name with problematic characters (like "\n", "\0", "]",
+etc.), use quotes.
 
-Ini::OD allows nested section using this syntax:
-
- [Outer][Inner][Even more inner]...
-
-Sometimes it is inconvenient having to write several deep sections, so you can
-use the !prepend_section directive:
+To specify nested section, you can use the !prepend_section directive:
 
  ;!prepend_section Outer Inner "Even more inner"
- ; becomes [Outer][Inner][Even more inner][a]
+ ; becomes [Outer] -> [Inner] -> [Even more inner] -> [a]
  [a]
  ...
- ; becomes [Outer][Inner][Even more inner][b]
+ ; becomes [Outer] -> [Inner] -> [Even more inner] -> [b]
  [b]
  ...
+ ;!prepend_section
+ [c]
+ ; now regular [c]
 
 =head2 Parameter line
 
@@ -546,7 +547,8 @@ To specify hash value, use nested section or an expression:
 
  [Section]
  ; param is {foo=>"1 ; a", bar=>"2"}
- [Section][param]
+ ;!prepend_section Section
+ [param]
  foo=1 ; a
  bar="2"
 
