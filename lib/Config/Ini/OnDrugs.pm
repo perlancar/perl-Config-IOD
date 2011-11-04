@@ -493,6 +493,17 @@ Ini::OD allows nested section using this syntax:
 
  [Outer][Inner][Even more inner]...
 
+Sometimes it is inconvenient having to write several deep sections, so you can
+use the !prepend_section directive:
+
+ ;!prepend_section Outer Inner "Even more inner"
+ ; becomes [Outer][Inner][Even more inner][a]
+ [a]
+ ...
+ ; becomes [Outer][Inner][Even more inner][b]
+ [b]
+ ...
+
 =head2 Parameter line
 
 Parameter lines specify name value pairs:
