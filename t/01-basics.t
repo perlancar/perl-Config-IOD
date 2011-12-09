@@ -79,6 +79,7 @@ test_parse(
         is($ini->get_value("section1", "foo"), "1", "get_value 1");
         is($ini->get_value("section1", "bar"), "2; 3", "get_value 2");
         is($ini->get_value("section1", "bar 3"), 'quoted "2"', "get_value 3");
+        is($ini->get_value("section2", "baz"), 'element 3', "get_value gets last element set instead of the whole list");
     },
 );
 
