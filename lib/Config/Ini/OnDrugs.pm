@@ -450,23 +450,26 @@ phrase "round trip", but it uses the phrase to mean integrity of values, not
 preserving comments/whitespaces.)
 
 
-=head1 INI::OD FORMAT SPECIFICATION
+=head1 IOD FORMAT SPECIFICATION
 
 Since the INI format does not have any formal specification, here is the
-specification for INI as used by this module (from here on: Ini::OD). Ini::OD is
-an extended INI format but backwards-backwards compatible with most INI format
-out there. Most extensions are done using directive in comments.
+specification for INI as used by this module (from here on: IOD). IOD is an
+extended INI format but backwards-backwards compatible with most INI format out
+there. Most extensions are done using directive in comments.
 
-An INI file is a text file containing either comment lines, directive lines,
-blank lines, section lines, and parameter lines.
+A configuration text file containing a sequence of lines, each line is either a
+blank line, a comment line, a directive line, a section line, or a parameter
+line.
 
 =head2 Blank line
 
-Blank lines are ignored.
+A blank line is a line containing zero or more whitespaces only. It is ignored.
 
 =head2 Comment line
 
-A comment line begins with ; or # as it's first nonblank character.
+A comment line begins with ; or # as it's first nonblank character. The use of ;
+is preferred over #, as some INI parsers (like one in PHP 5.3+) do not recognize
+or warn comments using #.
 
 =head2 Directive line
 
@@ -474,7 +477,6 @@ A directive line is a special comment line, starting with an exclamation mark
 ("!") followed by a directive name and zero or more arguments. An invalid
 directive will be ignored and assumed to be a normal command (with warnings).
 
- #!directivename
  ;!directivename arg ...
 
 Directives influence parsing and turn on/off features. Known directives will be
@@ -620,7 +622,7 @@ Directive !merge is used to merge sections.
 =head2 Unsupported features
 
 Some INI implementation support other features, and listed below are those
-unsupported by Ini::OD, usually because the features are not popular:
+unsupported by IOD, usually because the features are not popular:
 
 =over 4
 
@@ -630,7 +632,7 @@ unsupported by Ini::OD, usually because the features are not popular:
  line 2\
  line 3
 
-Supported by L<Config::IniFiles>. In Ini::OD, use quoting:
+Supported by L<Config::IniFiles>. In IOD, use quoting:
 
  param="line 1 \nline 2\nline 3"
 
@@ -641,10 +643,15 @@ Supported by L<Config::IniFiles>. In Ini::OD, use quoting:
  value2
  EOT
 
-Supported by Config::IniFiles. In Ini::OD, use multiple assignment:
+Supported by Config::IniFiles. In IOD, use multiple assignment or expression:
 
  param=value1
  param=value2
+
+or:
+
+ ;!expr
+ param=["value1", "value2"]
 
 =back
 
@@ -665,7 +672,31 @@ It is popular and familiar to many users. The format is simple to understand
 (this cannot be said of other formats like YAML). The simplicity of INI format
 also makes it easier to write round trip parser for.
 
-=head2 Were you on drugs?
+=head2 Why use Config::Ini::OnDrugs (the IOD format) over standard INI files?
+
+IOD supports several useful (to me, at least) features, the foremost being
+round-trip safe. Others include DRY (do not repeat yourself) features (includes,
+variables, merging, section prefix), expresiveness (expressions),
+and arbitrary/nested data structures (via expressions).
+
+=head2 Downsides of Config::Ini::OnDrugs (IOD format)?
+
+=over 4
+
+=item * Currently only has Perl parser
+
+INI parsers exist everywhere though, so some of the time you can fallback to
+INI.
+
+=item * You need to learn another minilanguage for expressions
+
+It's very similar to Perl though.
+
+=item * Expression parser is still slowish
+
+I plan to fix this in the future (e.g. by switching to L<Marpa>).
+
+=head2 Why the name? Were you on drugs?
 
 Sorry, no.
 
