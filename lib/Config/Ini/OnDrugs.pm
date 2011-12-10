@@ -459,7 +459,7 @@ there. Most extensions are done using directive in comments.
 
 A configuration text file containing a sequence of lines, each line is either a
 blank line, a comment line, a directive line, a section line, or a parameter
-line.
+line. Parsing is done line-by-line and in one pass.
 
 =head2 Blank line
 
@@ -479,8 +479,149 @@ directive will be ignored and assumed to be a normal command (with warnings).
 
  ;!directivename arg ...
 
-Directives influence parsing and turn on/off features. Known directives will be
-explained later in the text.
+Directives influence parsing and turn on/off features. Below is the list of
+known directives:
+
+=head3 !expr
+
+Specify that the next parameter value in the same section is an expression
+instead of a literal value. Example:
+
+ ;foo's value is a literal '3+2'
+ foo=3+2
+
+ ;!expr
+ ;bar's value is 5
+ bar=3+2
+
+ ;baz's value is '3+2'
+ baz=3+2
+
+Expression is written in L<Language::Expr> language, so consult its
+documentation for more details on the syntax. Available variable is $CONFIG,
+which is the deep hash variable containing the configuration (at the condition
+of the parsing point).
+
+=head3 !prepend_section <SECTION> ...
+
+Specify section levels to be prepended to the remaining section lines in the
+configuration. Each argument specify a level. This can help in writing deep
+sections. Example:
+
+Without prepend_section:
+
+ [Level 1][Level 2][Level 3][a]
+ foo=bar
+ [Level 1][Level 2][Level 3][b]
+ foo=bar
+ [Level 1][Level 2][Level 3][c]
+ foo=bar
+
+With prepend_section you just need to write:
+
+ ;this will assume all section to be prefixed
+ ;!prepend_section "Level 1" "Level 2" "Level 3"
+ [a]
+ foo=bar
+ [b]
+ foo=bar
+ [c]
+ foo=bar
+ ;back to no prefix
+ ;!prepend_section
+
+=head3 !include <PATH>
+
+Include another file, as if the content of the included file is the next lines
+in the current file. If PATH is not absolute, it is assumed to be relative to
+the current file (or included file). A circular include will cause the parser to
+die with an error. Example:
+
+File dir1/a.ini:
+ ;!prepend_section sa
+ [sub1]
+ a=1
+ ;!include ../dir2/b.ini
+
+File dir2/b.ini:
+ b=2
+ ;!expr
+ ;!include b2.ini
+ ;!include b3.ini
+
+File dir2/b2.ini:
+ c=2+1
+
+File dir2/b3.ini:
+ c=4
+ ;!prepend_section
+ [sb]
+ c=1
+
+Will parsed, will result in this configuration:
+
+ {
+     sa => {
+         sub1 => {
+             a => 1,
+             b => 2,
+             c => [3, 4],
+         },
+     },
+     sb => {
+         c => 1,
+     },
+ }
+
+=head3 !merge <SECTION> ...
+
+Specify that value for the remaining parameters is merged from another (already
+specified) section. This can be used to specify defaults.
+
+Example:
+
+ [-defaults]
+ quota=1000
+ ftp=1
+ shell=1
+ mysql=0
+
+ ;!merge -defaults
+
+ ; double quota for this user
+ [user1]
+ quota=2000
+
+ ; disable ftp for this user
+ [user2]
+ ftp=0
+
+ ; all admin users have unlimited quota
+ [-admins]
+ quota=-1
+
+ ;!merge -admins
+
+ [admin1]
+
+ ; this admin cannot use shell
+ [admin2]
+ shell=0
+
+ ;stop merging
+ ;!merge
+
+Merging a section with itself or with an unknown (at the parsing point) section
+is a no-op.
+
+How merging works: If !merge directive is active (set with one or more sections)
+then when it encounters a section it will first fill the section with values
+from
+
+=head3
+
+=head3
+
 
 =head2 Section line
 
@@ -498,10 +639,10 @@ etc.), use quotes.
 To specify nested section, you can use the !prepend_section directive:
 
  ;!prepend_section Outer Inner "Even more inner"
- ; becomes [Outer] -> [Inner] -> [Even more inner] -> [a]
+ ; becomes [Outer] -> [Inner] -> [Even further inner] -> [a]
  [a]
  ...
- ; becomes [Outer] -> [Inner] -> [Even more inner] -> [b]
+ ; becomes [Outer] -> [Inner] -> [Even further inner] -> [b]
  [b]
  ...
  ;!prepend_section
@@ -559,7 +700,8 @@ To specify hash value, use nested section or an expression:
 
 Normally a parameter line should occur below section line, so that parameter
 belongs to the section. But a parameter line is also allowed before section
-line, in which it will belong to the default section specified in the parser.
+line, in which it will belong to section called C<DEFAULT> (configurable via the
+parser's B<default_section> attribute).
 
 =head2 Quoting
 
@@ -702,8 +844,6 @@ Sorry, no.
 
 
 =head1 SEE ALSO
-
-Expression evaluation is done using L<Language::Expr>.
 
 Other INI modules: L<Config::IniFiles>, L<Config::INI>, L<Config::INIPlus>, etc.
 
