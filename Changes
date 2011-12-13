@@ -3,8 +3,8 @@ Revision history for Config-Ini-OnDrugs
 0.08     2011-12-13
 
          No implementation changes. Spec changes (syntax of nested section,
-         allow comment in section line). Warn that module is still not to be
-         used for real-world.
+         allow comment in section line). Add warning message that module is
+         still not usable.
 
 
 0.07     2011-10-29
