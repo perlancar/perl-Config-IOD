@@ -410,7 +410,8 @@ __END__
 
 =head1 DESCRIPTION
 
-NOTE: PRELIMINARY VERSION, PARTIAL IMPLEMENTATION
+B<WARNING: THIS MODULE IS NOT FUNCTIONAL, PLEASE DO NOT USE IT. I AM STILL
+REVISING THE SPECIFICATION, IMPLEMENTATION IS STILL VERY MINIMAL/PARTIAL.>
 
 This module provides INI reading/writing class/functions. There are several
 other INI modules on CPAN; this one focuses on round trip parsing, includes,
