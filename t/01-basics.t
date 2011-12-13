@@ -44,7 +44,7 @@ test_parse(ini => " ", num_lines=>1, types=>["B"], name=>"blank line");
 test_parse(ini => "foo=1", num_lines=>1, types=>["P"], name=>"parameter");
 test_parse(ini => "; foo=1", num_lines=>1, types=>["C"], name=>"comment");
 test_parse(ini => " #foo=1", num_lines=>1, types=>["C"], name=>"comment 2");
-test_parse(ini => ";!expr", num_lines=>1, types=>["D"], name=>"directive");
+test_parse(ini => ";!defaults", num_lines=>1, types=>["D"], name=>"directive");
 test_parse(ini => ";!array 1", dies=>1, name=>"unknown directive");
 test_parse(ini => ";! x", num_lines=>1, types=>["C"], name=>"non directive 1");
 test_parse(ini => "; !x", num_lines=>1, types=>["C"], name=>"non directive 2");
@@ -58,7 +58,7 @@ bar 2= "quoted 1"
 "bar 3" = "quoted \"2\""
 
 
-;!merge section1
+;!defaults section1
 [section2]
 foo=
 bar = 2
