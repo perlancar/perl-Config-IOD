@@ -176,15 +176,15 @@ sub dir_include {
     $self->_include($filename);
 }
 
-sub dirmeta_expr { {phase=>2} }
-sub dir_expr {
+sub dirmeta_defaults { {phase=>2} }
+sub dir_defaults {
     my ($self, $args) = @_;
 }
 
-sub dirmeta_merge { {phase=>2} }
-sub dir_merge {
-    my ($self, $args) = @_;
-}
+#sub dirmeta_merge { {phase=>??} }
+#sub dir_merge {
+#    my ($self, $args) = @_;
+#}
 
 # parse raw ini untuk an array of lines. each line is an arrayref [RAW_LINE,
 # TYPE(*)?, (type-specific data ...)]. TYPE is either "B" (blank line), "C"
@@ -455,8 +455,8 @@ preserving comments/whitespaces.)
 
 Since the INI format does not have any formal specification, here is the
 specification for INI as used by this module (from here on: IOD). IOD is an
-extended INI format but backwards-backwards compatible with most INI format out
-there. Most extensions are done using directive in comments.
+extended INI format. If you don't use any extended features, your IOD file is a
+plain INI file.
 
 A configuration text file containing a sequence of lines, each line is either a
 blank line, a comment line, a directive line, a section line, or a parameter
@@ -468,9 +468,10 @@ A blank line is a line containing zero or more whitespaces only. It is ignored.
 
 =head2 Comment line
 
-A comment line begins with ; or # as it's first nonblank character. The use of ;
-is preferred over #, as some INI parsers (like one in PHP 5.3+) do not recognize
-or warn comments using #.
+A comment line begins with ; or # as it's first nonblank character (note that
+some INI parsers do not allow indented comment). The use of ; is preferred over
+#, as some INI parsers (like one in PHP 5.3+) do not recognize or warn comments
+using #.
 
 =head2 Directive line
 
@@ -480,56 +481,9 @@ directive will be ignored and assumed to be a normal command (with warnings).
 
  ;!directivename arg ...
 
-Directives influence parsing and turn on/off features. Below is the list of
-known directives:
+Directives influence parsing and turn on/off features.
 
-=head3 !expr
-
-Specify that the next parameter value in the same section is an expression
-instead of a literal value. Example:
-
- ;foo's value is a literal '3+2'
- foo=3+2
-
- ;!expr
- ;bar's value is 5
- bar=3+2
-
- ;baz's value is '3+2'
- baz=3+2
-
-Expression is written in L<Language::Expr> language, so consult its
-documentation for more details on the syntax. Available variable is $CONFIG,
-which is the deep hash variable containing the configuration (at the condition
-of the parsing point).
-
-=head3 !prepend_section <SECTION> ...
-
-Specify section levels to be prepended to the remaining section lines in the
-configuration. Each argument specify a level. This can help in writing deep
-sections. Example:
-
-Without prepend_section:
-
- [Level 1][Level 2][Level 3][a]
- foo=bar
- [Level 1][Level 2][Level 3][b]
- foo=bar
- [Level 1][Level 2][Level 3][c]
- foo=bar
-
-With prepend_section you just need to write:
-
- ;this will assume all section to be prefixed
- ;!prepend_section "Level 1" "Level 2" "Level 3"
- [a]
- foo=bar
- [b]
- foo=bar
- [c]
- foo=bar
- ;back to no prefix
- ;!prepend_section
+Below is the list of known directives:
 
 =head3 !include <PATH>
 
@@ -539,47 +493,71 @@ the current file (or included file). A circular include will cause the parser to
 die with an error. Example:
 
 File dir1/a.ini:
- ;!prepend_section sa
- [sub1]
- a=1
- ;!include ../dir2/b.ini
+ [sectionA]
+   [sub1]
+   a=1
+   ;!include ../dir2/b.ini
 
 File dir2/b.ini:
- b=2
- ;!expr
- ;!include b2.ini
- ;!include b3.ini
+
+    b=2
+ ;dedent
 
 File dir2/b2.ini:
- c=2+1
+ c := 2+1
 
 File dir2/b3.ini:
- c=4
- ;!prepend_section
- [sb]
+   c=4
+ [sectionB]
  c=1
 
 Will parsed, will result in this configuration:
 
  {
-     sa => {
+     sectionA => {
          sub1 => {
              a => 1,
              b => 2,
              c => [3, 4],
          },
      },
-     sb => {
+     sectionB => {
          c => 1,
      },
  }
 
-=head3 !merge <SECTION> ...
+=head3 !defaults <SECTION> <SECTION2> ...
 
-Specify that value for the remaining parameters is merged from another (already
-specified) section. This can be used to specify defaults.
+Specify that from now on, when encountering a new section, fill it with values
+from SECTION (and then SECTION2, and so on) unless the values are already
+specified.
 
 Example:
+
+ [sect1]
+ a=1
+ b=2
+
+ ;!defaults sect1
+
+ [sect2]
+ a=10
+
+ [sect3]
+ c=1
+
+ [sect4]
+ a=0
+ b:=undef
+
+Will result in:
+
+ {sect1 => {a=>1, b=>2},
+  sect2 => {a=>10, b=>2},
+  sect3 => {a=>1, b=>2, c=>1},
+  sect4 => {a=>0, b=>undef},
+
+Another, more meaty example:
 
  [-defaults]
  quota=1000
@@ -587,7 +565,7 @@ Example:
  shell=1
  mysql=0
 
- ;!merge -defaults
+ ;!defaults -defaults
 
  ; double quota for this user
  [user1]
@@ -601,7 +579,7 @@ Example:
  [-admins]
  quota=-1
 
- ;!merge -admins
+ ;!defaults -admins
 
  [admin1]
 
@@ -609,20 +587,14 @@ Example:
  [admin2]
  shell=0
 
- ;stop merging
- ;!merge
+ ;no more defaults
+ ;!defaults
 
-Merging a section with itself or with an unknown (at the parsing point) section
-is a no-op.
+Defaults to the same section is ignored.
 
-How merging works: If !merge directive is active (set with one or more sections)
-then when it encounters a section it will first fill the section with values
-from
+=head3 !merge
 
-=head3
-
-=head3
-
+Mode-merging using L<Data::ModeMerge>. Details to be specified later.
 
 =head2 Section line
 
@@ -633,22 +605,84 @@ A section line introduces a section:
  []
  [""]
 
-Whitespace before the "[" token is allowed. Comment is not allowed at the end.
-To write a section name with problematic characters (like "\n", "\0", "]",
-etc.), use quotes.
+Comment is allowed at the end. To write a section name with problematic
+characters (like "\n", "\0", "]", etc.), use quotes.
 
-To specify nested section, you can use the !prepend_section directive:
+To specify nested section, you indent the subsection line relative to section
+line (minimum is 1 whitespace):
 
- ;!prepend_section Outer Inner "Even more inner"
- ; becomes [Outer] -> [Inner] -> [Even further inner] -> [a]
- [a]
- ...
- ; becomes [Outer] -> [Inner] -> [Even further inner] -> [b]
- [b]
- ...
- ;!prepend_section
+ [Outer]
+   [Inner]
+     [Further Inner]
+       [a]
+       val=1
+       [b]
  [c]
- ; now regular [c]
+ val=2
+
+will result in:
+
+ {Outer => {
+     Inner => {
+         "Further Inner" => {
+             a => {
+                 val => 1,
+             },
+             b => {
+             },
+         },
+     },
+  c => {
+      val => 1,
+  },
+ },
+
+Use of tab character is discouraged, but if exists as indentation it will be
+counted as 1 whitespace. Parameter line needs to be indented at least as its
+section:
+
+ [Section]
+   [Subsection]
+   a=1
+     b=2
+   c=3
+ d=4
+  e=5
+
+In the above example, a, b, and c belong to Subsection will d and e belong to
+Section.
+
+Non-contiguous sections are allowed, they will be assumed to be set/add
+parameters, e.g.:
+
+ [sect1]
+ a=1
+
+ [sect2]
+ a=1
+
+ [sect1]
+ a=2
+ b=3
+
+will result in C<sect1> containing C<a> as [1, 2] and C<b> as 3. However, note:
+
+ [sect1]
+ a=1
+
+ ;!defaults sect1
+ [sect2]
+ d=4
+
+ [sect1]
+ b=2
+
+ [sect3]
+ c=3
+
+C<sect2> will contain {a=>1, d=>4} since at the point of parsing C<sect2>,
+C<sect1> only contains {a=>1}. However, C<sect3> will contain {a=>1, b=>2, c=>3}
+since at the point of parsing C<sect3>, C<sect1> already becomes {a=>1, b=>2}.
 
 =head2 Parameter line
 
@@ -661,43 +695,46 @@ Parameter name and value can be quoted:
 
  "Contains\nnewline" = "\0"
 
-Whitespace before parameter name, and whitespaces between the "=" character are
-allowed and ignored. Trailing whitespace is not ignored for unquoted values.
+Whitespace before parameter name is allowed and can be used to enter/leave
+subsection (see L</"Subsection line">). Whitespaces between the "=" character
+are allowed and ignored. Trailing whitespace is allowed and ignored for quoted
+values but significant for unquoted values.
 
-To specify an C<undef> (C<null>) value, use expression:
+ a=1<space>
+ b="2"<space>
 
- ;!expr
- param1=undef
+In the above example, value of C<a> is "1" followed by a space, while value of
+C<b> is just "2".
 
-To specify an array value, use multiple lines or expression:
+Note that some INI parsers forbid some/all of these whitespaces.
+
+Instead of "=" you can use ":=" to specify expression instead of literal value.
+Expression is parsed by L<Language::Expr>. Using expression, you can specify a
+null (undefined) value:
+
+ param1 := undef
+
+or alternative of writing arrays. Instead of:
 
  param=foo
  param=bar
 
- ;!expr
- param=["foo", "bar"]
+you can write:
 
-To specify an array with a single value:
+ param := ["foo", "bar"]
 
- ;!expr
- param=["foo"]
+Using expression you can also specify an array with a single value (not possible
+using "=").
 
-To specify an array with an empty element:
+ param:=["foo"]
 
- ;!expr
- param=[]
+You can also specify an empty array using expression:
 
-To specify hash value, use nested section or an expression:
+ param:=[]
 
- [Section]
- ; param is {foo=>"1 ; a", bar=>"2"}
- ;!prepend_section Section
- [param]
- foo=1 ; a
- bar="2"
+To escape ":" as part of parameter name, use quoting:
 
- ;!expr
- param={"foo" => 1, "bar" => 2}
+ "param:"="literal, not expression"
 
 Normally a parameter line should occur below section line, so that parameter
 belongs to the section. But a parameter line is also allowed before section
@@ -720,9 +757,11 @@ You can include another file using the !include directive:
 
  ;!include "/My Home/foo.ini"
 
+See the documentation of the !include directive for more details.
+
 =head2 Variables and calculations
 
-You can use variables and calculations using the !expr directive.
+You can use variables and calculations using the expressions.
 
  ; param is 1+2+$a, literal
  param=1+2+$a
@@ -730,37 +769,65 @@ You can use variables and calculations using the !expr directive.
  ; param is 5
  a=3
  b=4
- ;!expr
- param = ($a**2 + $b**2) ** 0.5
+ param := ($a**2 + $b**2) ** 0.5
 
  ; to refer to sections
  [Section1]
  lang="Perl"
 
  [Section2]
- ;!expr
- param="I love " + $CONFIG['Section1']['lang']
+ param:="I love " + $CONFIG['Section1']['lang']
 
 Note: since parsing is done in 1-pass, make sure that you define a parameter
 first before using it in expressions.
 
+=head2 Specifying defaults
+
+To avoid repetition, you can specify defaults in a section and then use the
+values in that section for others. See documentation on the !defaults directive
+for more details.
+
 =head2 Merging between sections
 
-Directive !merge is used to merge sections.
+To be specified later.
 
- [default]
- repeat=1
- volume=100
+=head2 Summary of extended features
 
- ;!merge default
- [steven]
- file=/home/steven/song1.mp3
- repeat=2
+Below is a summary of extended features provided by IOD over "standard" INI
+format:
 
- ;!merge default steven
- [steven, car]
- file=/home/steven/song2.mp3
- volume=30
+=over 4
+
+=item * Round-trip parsing
+
+=item * Quoting
+
+=item * Indented section line, comments after section line
+
+=item * Indented comment line
+
+=item * Whitespaces before parameter name, between =, after parameter value
+
+Some INI parsers do not allow whitespaces at all.
+
+=item * # as comment character
+
+Some strict INI parsers only recognize C<;> as the comment starter. If in doubt,
+always use C<;>.
+
+=item * Directives (e.g. include, defaults, merging)
+
+Other INI parsers will see directive line as regular comment line.
+
+=item * Expressions
+
+Other INI parsers will see:
+
+ param:=value
+
+as { "param:" => "value" }.
+
+=back
 
 =head2 Unsupported features
 
@@ -793,8 +860,7 @@ Supported by Config::IniFiles. In IOD, use multiple assignment or expression:
 
 or:
 
- ;!expr
- param=["value1", "value2"]
+ param:=["value1", "value2"]
 
 =back
 
@@ -817,10 +883,8 @@ also makes it easier to write round trip parser for.
 
 =head2 Why use Config::Ini::OnDrugs (the IOD format) over standard INI files?
 
-IOD supports several useful (to me, at least) features, the foremost being
-round-trip safe. Others include DRY (do not repeat yourself) features (includes,
-variables, merging, section prefix), expresiveness (expressions),
-and arbitrary/nested data structures (via expressions).
+IOD supports several useful (to me, at least) extended features over "standard"
+INI files, see L</"Summary of extended features">.
 
 =head2 Downsides of Config::Ini::OnDrugs (IOD format)?
 
@@ -833,11 +897,11 @@ INI.
 
 =item * You need to learn another minilanguage for expressions
 
-It's very similar to Perl though.
+It's very similar to Perl though. See L<Language::Expr>.
 
 =item * Expression parser is still slowish
 
-I plan to fix this in the future (e.g. by switching to L<Marpa>).
+I plan to fix this in the future (e.g. by switching parser to L<Marpa>).
 
 =head2 Why the name? Were you on drugs?
 
