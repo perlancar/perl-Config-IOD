@@ -416,7 +416,8 @@ REVISING THE SPECIFICATION, IMPLEMENTATION IS STILL VERY MINIMAL/PARTIAL.>
 This module provides INI reading/writing class/functions. There are several
 other INI modules on CPAN; this one focuses on round trip parsing, includes,
 variables. The goal is to provide a usable format for configuration files
-suitable for automation (programatic modification) as well as editing by humans.
+suitable for automation (programmatic modification) as well as editing by
+humans.
 
 =head2 What is round trip parsing, and why it is useful?
 
@@ -451,16 +452,16 @@ phrase "round trip", but it uses the phrase to mean integrity of values, not
 preserving comments/whitespaces.)
 
 
-=head1 IOD FORMAT SPECIFICATION
+=head1 FORMAT SPECIFICATION
 
 Since the INI format does not have any formal specification, here is the
 specification for INI as used by this module (from here on: IOD). IOD is an
 extended INI format. If you don't use any extended features, your IOD file is a
 plain INI file.
 
-A configuration text file containing a sequence of lines, each line is either a
-blank line, a comment line, a directive line, a section line, or a parameter
-line. Parsing is done line-by-line and in one pass.
+A configuration is a text file containing a sequence of lines. Each line is
+either a blank line, a comment line, a directive line, a section line, or a
+parameter line. Parsing is done line-by-line and in one pass.
 
 =head2 Blank line
 
@@ -475,11 +476,13 @@ using #.
 
 =head2 Directive line
 
-A directive line is a special comment line, starting with an exclamation mark
-("!") followed by a directive name and zero or more arguments. An invalid
-directive will be ignored and assumed to be a normal command (with warnings).
+A directive line is a special comment line, the comment starts with an
+exclamation mark ("!") followed by a directive name and zero or more arguments.
+An invalid directive will be ignored and assumed to be a normal command (with
+warnings).
 
  ;!directivename arg ...
+ ; !invalid because it contains space
 
 Directives influence parsing and turn on/off features.
 
