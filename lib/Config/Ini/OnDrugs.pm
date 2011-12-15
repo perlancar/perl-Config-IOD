@@ -924,6 +924,6 @@ http://blogs.perl.org/users/steven_haryanto/2011/09/yaml-vs-ini-again-and-the-pl
 
 This module uses L<Log::Any> logging framework.
 
-This module's functions has L<Sub::Spec> specs.
+This module's functions have L<Sub::Spec> specs.
 
 =cut
