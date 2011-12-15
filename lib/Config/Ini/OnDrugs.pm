@@ -507,9 +507,11 @@ File dir2/b.ini:
  ;dedent
 
 File dir2/b2.ini:
+
  c := 2+1
 
 File dir2/b3.ini:
+
    c=4
  [sectionB]
  c=1
