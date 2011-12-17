@@ -507,9 +507,11 @@ File dir2/b.ini:
  ;dedent
 
 File dir2/b2.ini:
+
  c := 2+1
 
 File dir2/b3.ini:
+
    c=4
  [sectionB]
  c=1
@@ -922,6 +924,6 @@ http://blogs.perl.org/users/steven_haryanto/2011/09/yaml-vs-ini-again-and-the-pl
 
 This module uses L<Log::Any> logging framework.
 
-This module's functions has L<Sub::Spec> specs.
+This module's functions have L<Sub::Spec> specs.
 
 =cut
