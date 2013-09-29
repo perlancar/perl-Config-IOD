@@ -2,16 +2,17 @@ package Config::IOD;
 
 # TODO: option to only allow include if owner is the same
 
-use 5.010;
+use 5.010001;
 use strict;
 use warnings;
 use Log::Any '$log';
 
 use Cwd qw(abs_path);
-use Exporter::Lite;
 use File::Slurp;
 use File::chdir;
 
+require Exporter;
+our @ISA = qw(Exporter);
 our @EXPORT_OK = qw();
 
 # VERSION

@@ -4,16 +4,16 @@ use 5.010;
 use strict;
 use warnings;
 
-use Test::More 0.96;
+use Test::More 0.98;
 
-use Config::Ini::OnDrugs;
+use Config::IOD;
 
 sub test_parse {
     my %args = @_;
     subtest $args{name} => sub {
         my $res;
         my $ini;
-        eval { $ini = Config::Ini::OnDrugs->new(str=>$args{ini}) };
+        eval { $ini = Config::IOD->new(str=>$args{ini}) };
         my $eval_err = $@;
         if ($args{dies}) {
             ok($eval_err, "dies");

@@ -6,9 +6,9 @@ use warnings;
 
 use Test::More 0.96;
 
-use Config::Ini::OnDrugs;
+use Config::IOD;
 
-my $ini = Config::Ini::OnDrugs->new;
+my $ini = Config::IOD->new;
 
 sub test_parse {
     my %args = @_;
