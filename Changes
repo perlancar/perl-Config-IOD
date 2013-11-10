@@ -7,42 +7,43 @@ Revision history for Config-IOD
 
 0.08     2011-12-13 (SHARYANTO)
 
-         No implementation changes. Spec changes (syntax of nested section,
-         allow comment in section line). Add warning message that module is
-         still not usable.
+         - No implementation changes. Spec changes (syntax of nested section,
+           allow comment in section line). Add warning message that module is
+           still not usable.
 
 
 0.07     2011-10-29 (SHARYANTO)
 
-         No functional changes. Add missing dep [ct].
+         - No functional changes. Add missing dep [ct].
 
 
 0.06     2011-10-25 (SHARYANTO)
 
-         No functional changes. Add missing dep [ct].
+         - No functional changes. Add missing dep [ct].
 
 
 0.05     2011-10-20 (SHARYANTO)
 
-         Fix chdir.
+         - Fix chdir.
 
 
 0.04     2011-10-20 (SHARYANTO)
 
-         Fix stupid mistake in aliasing.
+         - Fix stupid mistake in aliasing.
 
 
 0.03     2011-10-20 (SHARYANTO)
 
-         Fix typo. Add another alias package: Config::INI::OnDrugs.
+         - Fix typo. Add another alias package: Config::INI::OnDrugs.
 
 
 0.02     2011-10-20 (SHARYANTO)
 
-         Fix and refactor some stuffs. Add as_tree(), Config::IOD alias package,
-         support for !include. Note that this module is still not ready yet.
+         - Fix and refactor some stuffs. Add as_tree(), Config::IOD alias
+           package, support for !include. Note that this module is still not
+           ready yet.
 
 
 0.01     2011-10-06 (SHARYANTO)
 
-         First, early release. Only a few features are implemented.
+         - First, early release. Only a few features are implemented.
