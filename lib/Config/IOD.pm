@@ -8,7 +8,7 @@ use warnings;
 use Log::Any '$log';
 
 use Cwd qw(abs_path);
-use File::Slurp;
+use File::Slurp::Tiny qw(read_file);
 use File::chdir;
 
 require Exporter;
