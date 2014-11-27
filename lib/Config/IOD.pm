@@ -429,8 +429,4 @@ Other alternative formats: L<YAML>, L<JSON>, L<Config::General>, XML, etc.
 The original blog post/discussion which leads to this module:
 http://blogs.perl.org/users/steven_haryanto/2011/09/yaml-vs-ini-again-and-the-plan-for-yet-another-ini-module.html
 
-This module uses L<Log::Any> logging framework.
-
-This module has L<Rinci> metadata.
-
 =cut
