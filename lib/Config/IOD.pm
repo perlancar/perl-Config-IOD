@@ -1,6 +1,7 @@
 package Config::IOD;
 
-# TODO: option to only allow include if owner is the same
+# DATE
+# VERSION
 
 use 5.010001;
 use strict;
@@ -16,8 +17,6 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw();
 
-# VERSION
-
 use constant {
     COL_RAW     => 0,
     COL_INCLUDE => 1, # 1 if line is from included file
@@ -29,8 +28,6 @@ use constant {
     COL_P_VALUE => 4,
     COL_S_NAMES => 3,
 };
-
-our %SPEC;
 
 our $re_hexdig  = qr/(?:[0-9A-Fa-f])/;
 # XXX: wide hex not supported yet
@@ -416,6 +413,11 @@ sub as_tree {
 
 
 =head1 FAQ
+
+
+=head1 TODO
+
+Option to only allow include if owner is the same.
 
 
 =head1 SEE ALSO
