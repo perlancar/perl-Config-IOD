@@ -357,15 +357,6 @@ sub as_tree {
     $self->{_tree};
 }
 
-# procedural functions
-
-#$SPEC{a} = {
-#    summary => '',
-#    description => '',
-#    args => {
-#    },
-#};
-
 1;
 #ABSTRACT: Read and write IOD (INI On Drugs) files
 
