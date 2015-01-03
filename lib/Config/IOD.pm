@@ -406,11 +406,6 @@ sub as_tree {
 =head1 FAQ
 
 
-=head1 TODO
-
-Option to only allow include if owner is the same.
-
-
 =head1 SEE ALSO
 
 File format specification: L<IOD>.
