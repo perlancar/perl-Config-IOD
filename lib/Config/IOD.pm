@@ -6,365 +6,186 @@ package Config::IOD;
 use 5.010001;
 use strict;
 use warnings;
-use experimental 'smartmatch';
-use Log::Any '$log';
 
-use Cwd qw(abs_path);
-use File::Slurp::Tiny qw(read_file);
-use File::chdir;
+use parent qw(Config::IOD::Base);
 
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw();
+sub _init_read {
+    my $self = shift;
 
-use constant {
-    COL_RAW     => 0,
-    COL_INCLUDE => 1, # 1 if line is from included file
-    COL_TYPE    => 2, # [BCDPS]
-
-    COL_D_NAME  => 3,
-    COL_D_ARGS  => 4,
-    COL_P_NAME  => 3,
-    COL_P_VALUE => 4,
-    COL_S_NAMES => 3,
-};
-
-our $re_hexdig  = qr/(?:[0-9A-Fa-f])/;
-# XXX: wide hex not supported yet
-our $re_strpart = qr/(?:
-                         [^"\\]+ |
-                         \\[tnrfbae"'\\\$] |
-                         \\0[0-7]{0,3} |
-                         \\x$re_hexdig {1,2}
-                     )/x;
-our $re_string  = qr/(?: $re_strpart* )/x;
-# simpler, faster regex for matching qs on left s of =
-our $re_quotedl = qr/(?:"(?:[^"\\]|\\"|\\)*")/x;
-# for matching on right side
-our $re_quotedr = qr/(?:".*?")/x;
-our $re_quoted  = qr/(?:\"$re_string\")/x;
-our $re_S       = qr/^\s*
-                     \[ (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"\]]))\]
-                     \s*
-                    /x;
-our $re_P       = qr/^\s*
-                     (?:(?<name_quoted>$re_quotedl) | (?<name_bare>[^"=]+?) )
-                     \s* = \s*
-                     (?:(?<value_quoted>$re_quotedr) \s* | (?<value_bare>.*?) )
-                     $
-                    /x;
-our $re_D_arg   = qr/$re_quotedl | [^"\s]+/x;
-our $re_D_args  = qr/(?:$re_D_arg (\s+ $re_D_arg)*)/x;
-our $re_D       = qr/^\s*
-                     [;#]
-                     !(?<name>\w+) (?<args> \s+ $re_D_args )?
-                     \s*$
-                    /x;
-
-sub _fmtmsg {
-    my ($self, $msg, $prefix) = @_;
-    join("",
-         $prefix // "",
-         (defined($self->{_curfile}) ?
-              " in file `$self->{_curfile}`" : ""),
-         (defined($self->{_curline}) ?
-              " at line #$self->{_curline}" : ""),
-        ": $msg"
-    );
+    $self->SUPER::_init_read;
+    $self->{_res} = [];
 }
 
-sub _dieline {
-    my ($self, $msg) = @_;
-    die $self->_fmtmsg($msg, "Parse error");
-}
+our $re_directive_abo =
+    qr/^(?P<comment_char>;?)(?P<ws1>\s*)!
+       (?P<ws2>\s*)(?P<directive>\w+)(?P<ws3>\s*)(?P<args_raw>.*)
+       (?P<nl>\R?)\z/x;
+our $re_directive =
+    qr/^;(?P<ws1>\s*)!
+       (?P<ws2>\s*)(?P<directive>\w+)(?P<ws3>\s*)(?P<args_raw>.*)
+       (?P<nl>\R?)\z/x;
 
-sub _warnline {
-    my ($self, $msg) = @_;
-    $log->warn($self->_fmtmsg($msg), "Parse warning");
-}
+sub _read_string {
+    my ($self, $str) = @_;
 
-sub _parse_quoted {
-    my ($self, $str, $quoted) = @_;
-    $quoted //= 1;
-    state $escapes = {
-        '"' => '"', "'" => "'", "\\" => "\\",
-        "r" => "\r", "t" => "\t", "n" => "\n",
-        "f" => "\f", "a" => "\a", "b" => "\b",
-        "e" => "\e", '$' => '$',
-    };
-    if ($quoted) {
-        $str =~ s/\A"//
-            or $self->_dieline("String without opening quotes: $str");
-        $str =~ s/"\z//
-            or $self->_dieline("String without closing quotes: $str");
-    }
-    if ($str !~ /\A$re_string\z/) {
-        $self->_dieline("Invalid string syntax: $str");
-    }
-    my @el = $str =~ /($re_strpart)/g;
-    for (@el) {
-        if (/^\\0(.*)/) {
-            $_ = chr(oct($1));
-        } elsif (/^\\x(.+)/) {
-            $_ = chr(hex($1));
-        } elsif (/^\\(.)/) {
-            $_ = $escapes->{$1};
+    my $res = $self->{_res};
+
+    my $directive_re = $self->{allow_bang_only} ?
+        $re_directive_abo : $re_directive;
+
+    my @lines = split /^/, $str;
+    local $self->{_linum} = 0;
+  LINE:
+    for my $line (@lines) {
+        $self->{_linum}++;
+
+        # blank line
+        if ($line !~ /\S/) {
+            push @$res, {type=>'B', raw=>$line};
+            next LINE;
         }
-    }
-    join "", @el;
-}
 
-# input must be valid raw args
-sub _split_args {
-    my ($self, $args) = @_;
-    my @args;
-    while ($args =~ s/($re_D_arg)\s*//) {
-        push @args, $1;
-    }
-    @args;
-}
-
-sub _include {
-    my ($self, $filename) = @_;
-    if (@{$self->{_include_stack}}) {
-        $log->tracef("Including %s ...", $filename);
-    } else {
-        $log->tracef("Loading INI configuration %s ...", $filename);
-    }
-    my $absfilename = abs_path($filename);
-    (-f $filename) && $absfilename or
-        $self->_dieline("Can't load file $filename: not found (cwd=".
-                    Cwd::cwd().")");
-    $self->{_include_stack} //= [];
-    if ($absfilename ~~ @{$self->{_include_stack}}) {
-        $self->_dieline("Recursive include: $absfilename");
-    }
-    my $dir;
-    if ($filename =~ m!/!) {
-        $dir = $filename;
-        $dir =~ s!(.+)/(.*)!$1!;
-    } else {
-        $dir = "";
-    }
-
-    my $ct;
-    eval { $ct = read_file($filename) };
-    my $eval_err = $@;
-    if ($eval_err) {
-        $self->_dieline("Can't load file $filename: $eval_err");
-    }
-    {
-        my $tmp = sub {
-            local $self->{_curline};
-            local $self->{_curfile} = $absfilename;
-            push @{$self->{_include_stack}}, $absfilename;
-            $self->{_include_level}++;
-            $self->_parse_raw($ct);
-            $self->{_include_level}--;
-            pop @{$self->{_include_stack}};
-        };
-        $CWD = $dir if length($dir);
-        $tmp->();
-    }
-}
-
-sub dirmeta_include { {phase=>1} }
-sub dir_include {
-    my ($self, $args) = @_;
-    my $filename = $args->[0];
-    $self->_include($filename);
-}
-
-sub dirmeta_defaults { {phase=>2} }
-sub dir_defaults {
-    my ($self, $args) = @_;
-}
-
-#sub dirmeta_merge { {phase=>??} }
-#sub dir_merge {
-#    my ($self, $args) = @_;
-#}
-
-# parse raw ini untuk an array of lines. each line is an arrayref [RAW_LINE,
-# TYPE(*)?, (type-specific data ...)]. TYPE is either "B" (blank line), "C"
-# (comment), "D" (directive), "S" (section), or "P" (parameter). * suffix
-# indicates that line comes from an included file.
-#
-sub _parse_raw {
-    my ($self, $raw) = @_;
-
-    if (!ref($raw) || ref($raw) ne 'ARRAY') {
-        $raw = [split /^/, $raw];
-    }
-
-    $self->{_curline} = 0;
-
-    if ($self->{_include_level} == 0) {
-        $self->{_lines} = [];
-    }
-
-    my @section_hooks;
-    my @param_hooks;
-    for my $line0 (@$raw) {
-        $self->{_curline}++;
-        my @line;
-        $line[COL_RAW] = $line0;
-        $line[COL_INCLUDE] = $self->{_include_level} > 0;
-
-        if ($line0 !~ /\S/) {
-
-            $line[COL_TYPE] = "B";
-
-        } elsif ($line0 =~ /^\s*[;#](.*)/) {
-
-            my $arg = $1;
-            if ($arg =~ /^!\w+(?:\s+|$)/) {
-                if ($line0 =~ $re_D) {
-                    my $name = $+{name};
-                    my $args0 = $+{args} // "";
-                    my $meth = "dir_$name";
-                    unless ($self->can($meth)) {
-                        $self->_dieline("Unknown directive: $name");
-                    }
-                    my @args = $self->_split_args($args0);
-                    $line[COL_TYPE]   = "D";
-                    $line[COL_D_NAME] = $name;
-                    $line[COL_D_ARGS] = \@args;
-                    my $methmt = "dirmeta_$name";
-                    unless ($self->can($methmt)) {
-                        $self->_dieline("Directive doesn't have meta: $name");
-                    }
-                    my $meta = $self->$methmt($name);
-                    if ($meta->{phase} == 1) {
-                        $self->$meth(\@args);
-                    }
+        # directive line
+        if ($line =~ s/$directive_re//) {
+            push @$res, {type=>'D', %+};
+            my $directive = $+{directive};
+            if ($self->{allow_directives}) {
+                $self->_err("Directive '$directive' is not in ".
+                                "allow_directives list")
+                    unless grep { $_ eq $directive }
+                        @{$self->{allow_directives}};
+            }
+            if ($self->{disallow_directives}) {
+                $self->_err("Directive '$directive' is in ".
+                                "disallow_directives list")
+                    if grep { $_ eq $directive }
+                        @{$self->{disallow_directives}};
+            }
+            my $args = $self->_parse_command_line($+{args_raw});
+            if (!defined($args)) {
+                $self->_err("Invalid arguments syntax '$line'");
+            }
+            if ($directive eq 'include') {
+                my $path;
+                if (! @$args) {
+                    $self->_err("Missing filename to include");
+                } elsif (@$args > 1) {
+                    $self->_err("Extraneous arguments");
                 } else {
-                    $self->_warnline("Invalid directive syntax");
+                    $path = $args->[0];
                 }
+                my $res = $self->_push_include_stack($path);
+                if ($res->[0] != 200) {
+                    $self->_err("Can't include '$path': $res->[1]");
+                }
+                $path = $res->[2];
+                $self->_read_string($self->_read_file($path));
+                $self->_pop_include_stack;
+            } elsif ($directive eq 'merge') {
+            } elsif ($directive eq 'noop') {
             } else {
-                $line[COL_TYPE] = "C";
+                $self->_err("Unknown directive '$directive'");
             }
-
-        } elsif ($line0 =~ /^\s*\[(.*)\]/) {
-
-            $line[COL_TYPE]    = "S";
-            $line[COL_S_NAMES] = [$1]; # XXX
-
-        } elsif ($line0 =~ /=/) {
-
-            if ($line0 =~ $re_P) {
-                my $name = defined($+{name_quoted}) ?
-                    $self->_parse_quoted($+{name_quoted}) : $+{name_bare};
-                my $value = defined($+{value_quoted}) ?
-                    $self->_parse_quoted($+{value_quoted}) : $+{value_bare};
-                $line[COL_TYPE]    = "P";
-                $line[COL_P_NAME]  = $name;
-                $line[COL_P_VALUE] = $value;
-            } else {
-                $self->_dieline("Invalid parameter assignment syntax");
-            }
-
-        } else {
-
-            $self->_dieline("Unknown line: $line0");
+            next LINE;
         }
 
-        push @{$self->{_lines}}, \@line;
+        # comment line
+        if ($line =~ /^(?P<ws1>\s*)(?P<comment_char>[;#])(?P<comment>.*?)
+                      (?P<nl>\R?)\z/x) {
+            push @$res, {type=>'C', %+};
+            next LINE;
+        }
+
+        # section line
+        if ($line =~ /^(?P<ws1>\s*)\[(?P<ws2>\s*)(?P<section>.+?)(?P<ws3>\s*)\]
+                      (?: (?P<ws4>\s*)(?P<comment_char>[;#])(?P<comment>.*))?
+                      (?P<nl>\R?)\z/x) {
+            push @$res, {type=>'S', %+};
+            next LINE;
+        }
+
+        # key line
+        if ($line =~ /^(?P<ws1>\s*)(?P<key>[^=]+?)(?P<ws2>\s*)=
+                      (?P<ws3>\s*)(?P<value_raw>.*?)
+                      (?P<nl>\R?)\z/x) {
+            push @$res, {type=>'K', %+};
+            next LINE;
+        }
+
+        $self->_err("Invalid syntax");
     }
 
-    # clean parsing work variables
-    if ($self->{_include_level} == 0) {
-        undef $self->{_curline};
-    }
+    $res;
 }
 
-# parse array of lines into tree of section/params.
-sub _parse_lines {
-    my ($self) = @_;
+sub _res_as_string {
+    my ($self, $res) = @_;
 
-    $self->{_next_section_hooks} = [];
-    $self->{_next_param_hooks} = [];
-    $self->{_cursection} = $self->{default_section};
-    $self->{_tree} = {};
-
-    for my $line (@{$self->{_lines}}) {
-        my $type = $line->[COL_TYPE];
-        if ($type eq 'S') {
-            my $name = $line->[COL_S_NAMES];
-            $self->{_cursection} = $name->[0]; # XXX
+    my @str;
+    my $linum = 0;
+    for my $line (@$res) {
+        $linum++;
+        my $type = $line->{type};
+        if ($type eq 'B') {
+            push @str, $line->{raw};
         } elsif ($type eq 'D') {
-            my ($name, $args) = ($line->[COL_D_NAME], $line->[COL_D_ARGS]);
-            my $methmt = "dirmeta_$name";
-            my $meta = $self->$methmt($name);
-            if ($meta->{phase} == 2) {
-                my $meth = "dir_$name";
-                $self->$meth($args);
-            }
-        } elsif ($type eq 'P') {
-            my ($name, $value) = ($line->[COL_P_NAME], $line->[COL_P_VALUE]);
-            $self->{_tree}{ $self->{_cursection} }{$name} = $value;
+            push @str, (
+                ($self->{allow_bang_only} ? $line->{comment_char} : ";"),
+                $line->{ws1}, "!", $line->{ws2}, $line->{directive},
+                $line->{ws3}, $line->{args_raw},
+                $line->{nl},
+            );
+        } elsif ($type eq 'C') {
+            push @str, (
+                $line->{ws1}, $line->{comment_char}, $line->{comment},
+                $line->{nl},
+            );
+        } elsif ($type eq 'S') {
+            push @str, (
+                $line->{ws1}, "[", $line->{ws2}, $line->{section}, $line->{ws3},
+                "]",
+                $line->{ws4} // '',
+                $line->{comment_char} // '',
+                $line->{comment} // '',
+                $line->{nl},
+            );
+        } elsif ($type eq 'K') {
+            push @str, (
+                $line->{ws1}, $line->{key}, $line->{ws2}, "=",
+                $line->{ws3}, $line->{value_raw},
+                $line->{nl},
+            );
+        } else {
+            die "BUG: Unknown type '$line->{type}' in line $linum";
         }
     }
 
-    # clean parseing work variables
-    undef $self->{_cursection};
-    undef $self->{_next_param_hooks};
-    undef $self->{_next_section_hooks};
-
-    $self->{_tree};
+    join "", @str;
 }
 
-sub new {
-    my ($class, %args) = @_;
-
-    my $self = bless {}, $class;
-
-    for my $k (keys %args) {
-        die "Unknown argument: $k" unless
-            $k =~ /\A(file|str|default_section)\z/;
-        $self->{$k} = $args{$k};
-    }
-    $self->{default_section} //= 'DEFAULT';
-    $self->{_include_stack} = [];
-
-    if (defined($self->{file}) || defined($self->{str})) {
-        if (defined $self->{file}) {
-            $self->{_include_level} = -1;
-            $self->_include($self->{file});
-        } elsif (defined $self->{str}) {
-            $self->{_include_level} = 0;
-            $self->_parse_raw($self->{str});
-        }
-        $self->_parse_lines;
-    }
-    $self;
-}
-
-sub get_section {
-    my ($self, $section) = @_;
-    $self->{_tree}{$section};
-}
-
-sub get_value {
-    my ($self, $section, $param) = @_;
-    my $s = $self->get_section($section);
-    return undef unless $s;
-    $s->{$param};
-}
-
-sub as_tree {
-    my ($self) = @_;
-    $self->{_tree};
-}
+# XXX handle decoding in get_value
 
 1;
-#ABSTRACT: Read and write IOD (INI On Drugs) files
+#ABSTRACT: Read and write IOD configuration files
 
 =head1 SYNOPSIS
 
- # oo interface
  use Config::IOD;
- my $ini = Config::IOD->new(file => "file.ini");
+ my $iod = Config::IOD->new(
+     # list of known attributes, with their default values
+     # default_section     => 'GLOBAL',
+     # enable_encoding     => 1,
+     # enable_quoting      => 1,
+     # enable_backet       => 1,
+     # enable_brace        => 1,
+     # allow_encodings     => undef, # or ['base64','json',...]
+     # disallow_encodings  => undef, # or ['base64','json',...]
+     # allow_directives    => undef, # or ['include','merge',...]
+     # disallow_directives => undef, # or ['include','merge',...]
+     # allow_bang_only     => 1,
+     # enable_expr         => 0,
+ );
+
  my $section = $ini->get_section("Section"); # a hashref of param=>values
  my $val = $ini->get_value("Section", "Parameter");
 
@@ -380,41 +201,28 @@ sub as_tree {
  # dump back as string
  $ini->as_string;
 
- # procedural interface, Config::IOD is a shorter alias
- use Config::IOD qw(
-     ini_get
-     ini_get_section
-     ini get_value
-     ini_add_section ini_delete_section
-     ini_add_value ini_set_value ini_delete_value
-     ini_comment_value ini_uncomment_value
-     ini_comment_section ini_uncomment_section
- );
- my $ini = ini_get("file.ini");
- my $section = ini_get_section("file.ini", "Section");
- my $value = ini_get_value("file.ini", "Section", "Parameter");
- ini_add_value("file.ini", , "Section", "Parameter", "Value");
- ...
+
+=head1 EXPRESSION
+
+# INSERT_BLOCK: Config::IOD::Base expression
 
 
 =head1 ATTRIBUTES
+
+# INSERT_BLOCK: Config::IOD::Base attributes
 
 
 =head1 METHODS
 
 
-=head1 FAQ
-
-
 =head1 SEE ALSO
 
-File format specification: L<IOD>.
+L<IOD> - specification
 
-Other INI modules: L<Config::IniFiles>, L<Config::INI>, L<Config::INIPlus>, etc.
+L<Config::IOD::Reader> - if you just need to read a configuration file, you
+should probably use this module instead. It's lighter, faster, and has a simpler
+interface.
 
-Other alternative formats: L<YAML>, L<JSON>, L<Config::General>, XML, etc.
-
-The original blog post/discussion which leads to this module:
-http://blogs.perl.org/users/steven_haryanto/2011/09/yaml-vs-ini-again-and-the-plan-for-yet-another-ini-module.html
+L<IOD::Examples> - sample documents
 
 =cut
