@@ -150,6 +150,12 @@ sub _read_string {
         $self->_err("Invalid syntax");
     }
 
+    # make sure we always end with newline
+    if (@$res) {
+        $res->[-1][-1] .= "\n"
+            unless $res->[-1][-1] =~ /\R\z/;
+    }
+
     require Config::IOD::Document;
     Config::IOD::Document->new(_parser=>$self, _parsed=>$res);
 }
