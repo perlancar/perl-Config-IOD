@@ -7,48 +7,12 @@ use 5.010001;
 use strict;
 use warnings;
 
-use constant +{
-    COL_TYPE => 0,
-
-    COL_B_RAW => 1,
-
-    COL_D_COMMENT_CHAR => 1,
-    COL_D_WS1 => 2,
-    COL_D_WS2 => 3,
-    COL_D_DIRECTIVE => 4,
-    COL_D_WS3 => 5,
-    COL_D_ARGS_RAW => 6,
-    COL_D_NL => 7,
-
-    COL_C_WS1 => 1,
-    COL_C_COMMENT_CHAR => 2,
-    COL_C_COMMENT => 3,
-    COL_C_NL => 4,
-
-    COL_S_WS1 => 1,
-    COL_S_WS2 => 2,
-    COL_S_SECTION => 3,
-    COL_S_WS3 => 4,
-    COL_S_WS4 => 5,
-    COL_S_COMMENT_CHAR => 6,
-    COL_S_COMMENT => 7,
-    COL_S_NL => 8,
-
-    COL_K_WS1 => 1,
-    COL_K_KEY => 2,
-    COL_K_WS2 => 3,
-    COL_K_WS3 => 4,
-    COL_K_VALUE_RAW => 5,
-    COL_K_NL => 6,
-};
-
 use parent qw(Config::IOD::Base);
 
 sub _init_read {
     my $self = shift;
 
     $self->SUPER::_init_read;
-    $self->{_res} = [];
 }
 
 our $re_directive_abo =
@@ -63,7 +27,7 @@ our $re_directive =
 sub _read_string {
     my ($self, $str) = @_;
 
-    my $res = $self->{_res};
+    my $res = [];
 
     my $directive_re = $self->{allow_bang_only} ?
         $re_directive_abo : $re_directive;
@@ -186,69 +150,9 @@ sub _read_string {
         $self->_err("Invalid syntax");
     }
 
-    $res;
+    require Config::IOD::Document;
+    Config::IOD::Document->new(_raw=>$res);
 }
-
-sub _res_as_string {
-    my ($self, $res) = @_;
-
-    my @str;
-    my $linum = 0;
-    for my $line (@$res) {
-        $linum++;
-        my $type = $line->[COL_TYPE];
-        if ($type eq 'B') {
-            push @str, $line->[COL_B_RAW];
-        } elsif ($type eq 'D') {
-            push @str, join(
-                "",
-                ($self->{allow_bang_only} ? $line->[COL_D_COMMENT_CHAR] : ";"),
-                $line->[COL_D_WS1], "!",
-                $line->[COL_D_WS2],
-                $line->[COL_D_DIRECTIVE],
-                $line->[COL_D_WS3],
-                $line->[COL_D_ARGS_RAW],
-                $line->[COL_D_NL],
-            );
-        } elsif ($type eq 'C') {
-            push @str, join(
-                "",
-                $line->[COL_C_WS1],
-                $line->[COL_C_COMMENT_CHAR],
-                $line->[COL_C_COMMENT],
-                $line->[COL_C_NL],
-            );
-        } elsif ($type eq 'S') {
-            push @str, join(
-                "",
-                $line->[COL_S_WS1], "[",
-                $line->[COL_S_WS2],
-                $line->[COL_S_SECTION],
-                $line->[COL_S_WS3], "]",
-                $line->[COL_S_WS4] // '',
-                $line->[COL_S_COMMENT_CHAR] // '',
-                $line->[COL_S_COMMENT] // '',
-                $line->[COL_S_NL],
-            );
-        } elsif ($type eq 'K') {
-            push @str, join(
-                "",
-                $line->[COL_K_WS1],
-                $line->[COL_K_KEY],
-                $line->[COL_K_WS2], "=",
-                $line->[COL_K_WS3],
-                $line->[COL_K_VALUE_RAW],
-                $line->[COL_K_NL],
-            );
-        } else {
-            die "BUG: Unknown type '$type' in line $linum";
-        }
-    }
-
-    join "", @str;
-}
-
-# XXX handle decoding in get_value
 
 1;
 #ABSTRACT: Read and write IOD configuration files
@@ -271,20 +175,23 @@ sub _res_as_string {
      # enable_expr         => 0,
  );
 
- my $section = $ini->get_section("Section"); # a hashref of param=>values
- my $val = $ini->get_value("Section", "Parameter");
+Read IOD document from a file or string, return L<Config::IOD::Document> object:
 
- # not yet implemented
- $ini->add_section("Section2"); # empty section
- $ini->add_section("Section3", {Param=>Value, ...}); # section with values
- $ini->delete_section("Section2");
- $ini->set_value("Section", "Param", "New Value");
- $ini->delete_value("Section", "Param");
+ my $doc = $iod->read_file("/path/to/some.iod");
+ my $doc = $iod->read_string("...");
 
- $ini->as_tree;
+Insert a section:
 
- # dump back as string
- $ini->as_string;
+ $iod->insert_section('name');
+
+ # don't insert if section already exists
+ $iod->insert_section('name', {ignore=>1});
+
+Dump back object as IOD document string:
+
+ print $doc->as_string;
+ # or just:
+ print $doc;
 
 
 =head1 EXPRESSION
