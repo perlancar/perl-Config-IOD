@@ -82,6 +82,10 @@ sub _validate_comment {
     return ("", $comment);
 }
 
+sub _blank_line {
+    ["B", "\n"];
+}
+
 sub _find_section {
     my $self = shift;
     my $opts;
@@ -95,7 +99,7 @@ sub _find_section {
     my @res;
 
     my $linum = 0;
-    for my $line (@{ $self->{_p} }) {
+    for my $line (@{ $self->{_parsed} }) {
         $linum++;
         next unless $line->[COL_TYPE] eq 'S';
         if (defined $name) {
@@ -166,9 +170,14 @@ sub insert_section {
     }
 
     my $linum;
-    my @lines_to_add;
+    if ($opts->{top}) {
+        $linum = $self->_find_section;
+        $linum //= 1;
+    } else {
+        $linum = @$p + 1;
+    }
 
-    push @lines_to_add, [
+    splice @$p, $linum-1, 0, [
         'S',
         '', # COL_S_WS1
         '', # COL_S_WS2
@@ -179,22 +188,6 @@ sub insert_section {
         $opts->{comment}, # COL_S_COMMENT
         "\n", # COL_S_NL
     ];
-
-    if ($opts->{top}) {
-        $linum = $self->_find_section;
-        if ($linum) {
-            push @lines_to_add, ['B', "\n"];
-        }
-        $linum //= 1;
-    } else {
-        $linum = @$p + 1;
-        if (!$p->[$linum] ||
-                $p->[$linum] && $p->[$linum][COL_TYPE] ne 'B') {
-            unshift @lines_to_add, ['B', "\n"];
-        }
-    }
-
-    splice @$p, $linum-1, 0, @lines_to_add;
     $linum;
 }
 
