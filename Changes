@@ -5,6 +5,8 @@ Revision history for Config-IOD
          - Split specification to another dist (IOD). This has been done since
            2012-10-14.
 
+         - Rename module/dist from Config-Ini-OnDrugs to Config-IOD.
+
          - Rewrite implementation, interface is now pure OO-only.
 
          - Implement deleting section/key and inserting (replacing) section/key,
