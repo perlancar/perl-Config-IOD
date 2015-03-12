@@ -8,8 +8,21 @@ use Test::Config::IOD qw(test_modify_doc);
 use Test::More 0.98;
 
 subtest "insert_section" => sub {
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section("") },
+                    '', undef, 'validate section (1)');
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section("a\nb") },
+                    '', undef, 'validate section (2)');
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section("a]") },
+                    '', undef, 'validate section (3)');
+
     test_modify_doc(sub { $_[0]->insert_section("s1") },
                     <<'EOF1', <<'EOF2', 'empty');
+EOF1
+[s1]
+EOF2
+
+    test_modify_doc(sub { $_[0]->insert_section("s1 ") },
+                    <<'EOF1', <<'EOF2', 'clean section (1)');
 EOF1
 [s1]
 EOF2
@@ -63,6 +76,9 @@ EOF2
 EOF1
 [s1] ;foo
 EOF2
+
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section({comment=>"a\nb"}, "s1") },
+                    '', undef, 'validate comment (1)');
 };
 
 DONE_TESTING:
