@@ -189,6 +189,19 @@ Read IOD document from a file or string, return L<Config::IOD::Document> object:
 See Config::IOD::Document for methods available for C<$doc>.
 
 
+=head1 DESCRIPTION
+
+This module is a round-trip parser for L<IOD> configuration format. Round-trip
+means all whitespaces and comments are preserved, so you get byte-by-byte
+equivalence if you dump back the parsed document into string.
+
+Aside from parsing, methods for modifying IOD documents (add/delete sections &
+keys, etc) are also provided.
+
+If you only need to read IOD configuration files, you might want to use
+L<Config::IOD::Reader> instead.
+
+
 =head1 ATTRIBUTES
 
 # INSERT_BLOCK: Config::IOD::Base attributes
