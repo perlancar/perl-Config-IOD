@@ -151,7 +151,7 @@ sub _read_string {
     }
 
     require Config::IOD::Document;
-    Config::IOD::Document->new(_iod=>$self, _raw=>$res);
+    Config::IOD::Document->new(_parser=>$self, _parsed=>$res);
 }
 
 1;

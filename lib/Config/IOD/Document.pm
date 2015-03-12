@@ -45,7 +45,7 @@ use constant +{
 
 sub new {
     my ($class, %attrs) = @_;
-    #croak "Please specify _raw" unless $attrs{_raw};
+    #croak "Please specify _parsed" unless $attrs{_parsed};
     bless \%attrs, $class;
 }
 
@@ -95,7 +95,7 @@ sub _find_section {
     my @res;
 
     my $linum = 0;
-    for my $line (@{ $self->{_raw} }) {
+    for my $line (@{ $self->{_p} }) {
         $linum++;
         next unless $line->[COL_TYPE] eq 'S';
         if (defined $name) {
@@ -121,8 +121,8 @@ sub _find_key {
     my @res;
 
     my $linum = 0;
-    my $cur_section = $self->{_iod}{default_section};
-    for my $line (@{ $self->{_raw} }) {
+    my $cur_section = $self->{_parser}{default_section};
+    for my $line (@{ $self->{_parsed} }) {
         $linum++;
         if ($line->[COL_TYPE] eq 'S') {
             $cur_section = $line->[COL_S_SECTION];
@@ -150,7 +150,7 @@ sub insert_section {
     my ($err, $name) = $self->_validate_section($_[0]);
     croak $err if $err;
 
-    my $raw = $self->{_raw};
+    my $p = $self->{_parsed};
 
     if (defined $opts->{comment}) {
         ($err, $opts->{comment}) = $self->_validate_comment($opts->{comment});
@@ -187,14 +187,14 @@ sub insert_section {
         }
         $linum //= 1;
     } else {
-        $linum = @$raw + 1;
-        if (!$raw->[$linum] ||
-                $raw->[$linum] && $raw->[$linum][COL_TYPE] ne 'B') {
+        $linum = @$p + 1;
+        if (!$p->[$linum] ||
+                $p->[$linum] && $p->[$linum][COL_TYPE] ne 'B') {
             unshift @lines_to_add, ['B', "\n"];
         }
     }
 
-    splice @$raw, $linum-1, 0, @lines_to_add;
+    splice @$p, $linum-1, 0, @lines_to_add;
     $linum;
 }
 
@@ -214,7 +214,7 @@ sub insert_key {
     my ($err_value, $value)     = $self->_validate_value($_[2]);
     croak $err_value if $err_value;
 
-    my $raw = $self->{_raw};
+    my $p = $self->{_parsed};
 
     my $linum;
     my @lines_to_add;
@@ -245,7 +245,7 @@ sub insert_key {
         if ($linum) {
             croak "Can't insert key '$name': already exists";
         } else {
-            $linum = @$raw + 1;
+            $linum = @$p + 1;
         }
     }
 
@@ -257,16 +257,18 @@ sub insert_key {
     #XXX implement option: ignore
     #XXX implement option: replace
 
-    splice @$raw, $linum-1, 0, @lines_to_add;
+    splice @$p, $linum-1, 0, @lines_to_add;
     $linum;
 }
 
 sub as_string {
     my $self = shift;
 
+    my $abo = $self->{_parser}{allow_bang_only};
+
     my @str;
     my $linum = 0;
-    for my $line (@{$self->{_raw}}) {
+    for my $line (@{$self->{_parsed}}) {
         $linum++;
         my $type = $line->[COL_TYPE];
         if ($type eq 'B') {
@@ -274,7 +276,7 @@ sub as_string {
         } elsif ($type eq 'D') {
             push @str, join(
                 "",
-                ($self->{allow_bang_only} ? $line->[COL_D_COMMENT_CHAR] : ";"),
+                ($abo ? $line->[COL_D_COMMENT_CHAR] : ";"),
                 $line->[COL_D_WS1], "!",
                 $line->[COL_D_WS2],
                 $line->[COL_D_DIRECTIVE],
