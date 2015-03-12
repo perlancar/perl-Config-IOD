@@ -540,8 +540,8 @@ C<replace>.
 
 =item * replace => bool
 
-If set to 1, will replace (all) previous key if key already exists. Conflicts
-with C<add> and C<ignore>.
+If set to 1, will delete (all) previous keys first. Conflicts with C<add> and
+C<ignore>.
 
 =item * top => bool
 
@@ -552,6 +552,36 @@ will add at the end of section.
 
 Optional. Insert at this specific line number. Line number must fall within
 section. Ignores C<top>.
+
+=back
+
+=head2 $doc->delete_section([\%opts, ]$section) => $num_deleted
+
+Delete section named C<$section>.
+
+Options:
+
+=over
+
+=item * all => bool
+
+If set to 1, then will delete all occurrences. By default only delete the first
+occurrence.
+
+=back
+
+=head2 $doc->delete_key([\%opts, ]$section, $name) => $num_deleted
+
+Delete key named C<$name> in section named C<$section>.
+
+Options:
+
+=over
+
+=item * all => bool
+
+If set to 1, then will delete all occurrences. By default only delete the first
+occurrence.
 
 =back
 
