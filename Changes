@@ -1,8 +1,14 @@
 Revision history for Config-IOD
 
-0.09     2012-10-13 (SHARYANTO) (not yet released)
+0.09     2015-03-12 (PERLANCAR)
 
-         - Split specification to another dist (IOD).
+         - Split specification to another dist (IOD). This has been done since
+           2012-10-14.
+
+         - Rewrite implementation, interface is now pure OO-only.
+
+         - Implement deleting section/key and inserting (replacing) section/key,
+           but not much else yet. More methods will be added in the future.
 
 
 0.08     2011-12-13 (SHARYANTO)
