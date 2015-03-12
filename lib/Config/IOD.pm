@@ -201,6 +201,18 @@ See Config::IOD::Document for methods available for C<$doc>.
 
 =head1 METHODS
 
+=head2 new(%attrs) => obj
+
+=head2 $reader->read_file($filename) => obj
+
+Read IOD configuration from a file. Return L<Config::IOD::Document> instance.
+Die on errors.
+
+=head2 $reader->read_string($str) => obj
+
+Read IOD configuration from a string. Return L<Config::IOD::Document> instance.
+Die on errors.
+
 
 =head1 SEE ALSO
 
