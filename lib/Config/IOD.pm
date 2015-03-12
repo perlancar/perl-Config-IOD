@@ -200,7 +200,8 @@ sub _res_as_string {
         if ($type eq 'B') {
             push @str, $line->[COL_B_RAW];
         } elsif ($type eq 'D') {
-            push @str, (
+            push @str, join(
+                "",
                 ($self->{allow_bang_only} ? $line->[COL_D_COMMENT_CHAR] : ";"),
                 $line->[COL_D_WS1], "!",
                 $line->[COL_D_WS2],
@@ -210,14 +211,16 @@ sub _res_as_string {
                 $line->[COL_D_NL],
             );
         } elsif ($type eq 'C') {
-            push @str, (
+            push @str, join(
+                "",
                 $line->[COL_C_WS1],
                 $line->[COL_C_COMMENT_CHAR],
                 $line->[COL_C_COMMENT],
                 $line->[COL_C_NL],
             );
         } elsif ($type eq 'S') {
-            push @str, (
+            push @str, join(
+                "",
                 $line->[COL_S_WS1], "[",
                 $line->[COL_S_WS2],
                 $line->[COL_S_SECTION],
@@ -228,7 +231,8 @@ sub _res_as_string {
                 $line->[COL_S_NL],
             );
         } elsif ($type eq 'K') {
-            push @str, (
+            push @str, join(
+                "",
                 $line->[COL_K_WS1],
                 $line->[COL_K_KEY],
                 $line->[COL_K_WS2], "=",
