@@ -7,6 +7,41 @@ use 5.010001;
 use strict;
 use warnings;
 
+use constant +{
+    COL_TYPE => 0,
+
+    COL_B_RAW => 1,
+
+    COL_D_COMMENT_CHAR => 1,
+    COL_D_WS1 => 2,
+    COL_D_WS2 => 3,
+    COL_D_DIRECTIVE => 4,
+    COL_D_WS3 => 5,
+    COL_D_ARGS_RAW => 6,
+    COL_D_NL => 7,
+
+    COL_C_WS1 => 1,
+    COL_C_COMMENT_CHAR => 2,
+    COL_C_COMMENT => 3,
+    COL_C_NL => 4,
+
+    COL_S_WS1 => 1,
+    COL_S_WS2 => 2,
+    COL_S_SECTION => 3,
+    COL_S_WS3 => 4,
+    COL_S_WS4 => 5,
+    COL_S_COMMENT_CHAR => 6,
+    COL_S_COMMENT => 7,
+    COL_S_NL => 8,
+
+    COL_K_WS1 => 1,
+    COL_K_KEY => 2,
+    COL_K_WS2 => 3,
+    COL_K_WS3 => 4,
+    COL_K_VALUE_RAW => 5,
+    COL_K_NL => 6,
+};
+
 use parent qw(Config::IOD::Base);
 
 sub _init_read {
@@ -41,21 +76,25 @@ sub _read_string {
 
         # blank line
         if ($line !~ /\S/) {
-            push @$res, {type=>'B', raw=>$line};
+            push @$res, [
+                'B',
+                $line, # RAW
+            ];
             next LINE;
         }
 
         # directive line
         if ($line =~ s/$directive_re//) {
-            push @$res, {
-                type=>'D',
-                comment_char=>$1,
-                ws1=>$2,
-                ws2=>$3,
-                directive=>$4,
-                ws4=>$5,
-                args_raw=>$6,
-            };
+            push @$res, [
+                'D',
+                $1, # COL_D_COMMENT_CHAR
+                $2, # COL_D_WS1
+                $3, # COL_D_WS2
+                $4, # COL_D_DIRECTIVE
+                $5, # COL_D_WS3
+                $6, # COL_D_ARGS_RAW
+                $7, # COL_D_NL
+            ];
             my $directive = $4;
             if ($self->{allow_directives}) {
                 $self->_err("Directive '$directive' is not in ".
@@ -100,13 +139,13 @@ sub _read_string {
         # comment line
         if ($line =~ /^(\s*)([;#])(.*?)
                       (\R?)\z/x) {
-            push @$res, {
-                type=>'C',
-                ws1=>$1,
-                comment_char=>$2,
-                comment=>$3,
-                nl=>$4,
-            };
+            push @$res, [
+                'C',
+                $1, # COL_C_WS1
+                $2, # COL_C_COMMENT_CHAR
+                $3, # COL_C_COMMENT
+                $4, # COL_C_NL
+            ];
             next LINE;
         }
 
@@ -114,17 +153,17 @@ sub _read_string {
         if ($line =~ /^(\s*)\[(\s*)(.+?)(\s*)\]
                       (?: (\s*)([;#])(.*))?
                       (\R?)\z/x) {
-            push @$res, {
-                type=>'S',
-                ws1=>$1,
-                ws2=>$2,
-                section=>$3,
-                ws3=>$4,
-                ws4=>$5,
-                comment_char=>$6,
-                comment=>$7,
-                nl=>$8,
-            };
+            push @$res, [
+                'S',
+                $1, # COL_S_WS1
+                $2, # COL_S_WS2
+                $3, # COL_S_SECTION
+                $4, # COL_S_WS3
+                $5, # COL_S_WS4
+                $6, # COL_S_COMMENT_CHAR
+                $7, # COL_S_COMMENT
+                $8, # COL_S_NL
+            ];
             next LINE;
         }
 
@@ -132,15 +171,15 @@ sub _read_string {
         if ($line =~ /^(\s*)([^=]+?)(\s*)=
                       (\s*)(.*?)
                       (\R?)\z/x) {
-            push @$res, {
-                type=>'K',
-                ws1=>$1,
-                key=>$2,
-                ws2=>$3,
-                ws3=>$4,
-                value_raw=>$5,
-                nl=>$6,
-            };
+            push @$res, [
+                'K',
+                $1, # COL_K_WS1
+                $2, # COL_K_KEY
+                $3, # COL_K_WS2
+                $4, # COL_K_WS3
+                $5, # COL_K_VALUE_RAW
+                $6, # COL_K_NL
+            ];
             next LINE;
         }
 
@@ -157,38 +196,48 @@ sub _res_as_string {
     my $linum = 0;
     for my $line (@$res) {
         $linum++;
-        my $type = $line->{type};
+        my $type = $line->[COL_TYPE];
         if ($type eq 'B') {
-            push @str, $line->{raw};
+            push @str, $line->[COL_B_RAW];
         } elsif ($type eq 'D') {
             push @str, (
-                ($self->{allow_bang_only} ? $line->{comment_char} : ";"),
-                $line->{ws1}, "!", $line->{ws2}, $line->{directive},
-                $line->{ws3}, $line->{args_raw},
-                $line->{nl},
+                ($self->{allow_bang_only} ? $line->[COL_D_COMMENT_CHAR] : ";"),
+                $line->[COL_D_WS1], "!",
+                $line->[COL_D_WS2],
+                $line->[COL_D_DIRECTIVE],
+                $line->[COL_D_WS3],
+                $line->[COL_D_ARGS_RAW],
+                $line->[COL_D_NL],
             );
         } elsif ($type eq 'C') {
             push @str, (
-                $line->{ws1}, $line->{comment_char}, $line->{comment},
-                $line->{nl},
+                $line->[COL_C_WS1],
+                $line->[COL_C_COMMENT_CHAR],
+                $line->[COL_C_COMMENT],
+                $line->[COL_C_NL],
             );
         } elsif ($type eq 'S') {
             push @str, (
-                $line->{ws1}, "[", $line->{ws2}, $line->{section}, $line->{ws3},
-                "]",
-                $line->{ws4} // '',
-                $line->{comment_char} // '',
-                $line->{comment} // '',
-                $line->{nl},
+                $line->[COL_S_WS1], "[",
+                $line->[COL_S_WS2],
+                $line->[COL_S_SECTION],
+                $line->[COL_S_WS3], "]",
+                $line->[COL_S_WS4] // '',
+                $line->[COL_S_COMMENT_CHAR] // '',
+                $line->[COL_S_COMMENT] // '',
+                $line->[COL_S_NL],
             );
         } elsif ($type eq 'K') {
             push @str, (
-                $line->{ws1}, $line->{key}, $line->{ws2}, "=",
-                $line->{ws3}, $line->{value_raw},
-                $line->{nl},
+                $line->[COL_K_WS1],
+                $line->[COL_K_KEY],
+                $line->[COL_K_WS2], "=",
+                $line->[COL_K_WS3],
+                $line->[COL_K_VALUE_RAW],
+                $line->[COL_K_NL],
             );
         } else {
-            die "BUG: Unknown type '$line->{type}' in line $linum";
+            die "BUG: Unknown type '$type' in line $linum";
         }
     }
 
