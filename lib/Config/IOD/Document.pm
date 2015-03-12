@@ -6,6 +6,7 @@ package Config::IOD::Document;
 use 5.010;
 use strict;
 use warnings;
+use Carp;
 
 use constant +{
     COL_TYPE => 0,
@@ -44,13 +45,52 @@ use constant +{
 
 sub new {
     my ($class, %attrs) = @_;
-    die "Please specify _raw" unless $attrs{_raw};
+    #croak "Please specify _raw" unless $attrs{_raw};
     bless \%attrs, $class;
 }
 
+# all _validate_*() methods return ($err_msg, $validated_val)
+
+sub _validate_section {
+    my ($self, $name) = @_;
+    $name =~ s/\A\s+//;
+    $name =~ s/\s+\z//;
+    if (!length($name)) { return ("Section name must be non-zero string") }
+    if ($name =~ /\R|\]/) { return ("Section name must not contain ] or newline") }
+    return ("", $name);
+}
+
+sub _validate_key {
+    my ($self, $name) = @_;
+    $name =~ s/\A\s+//;
+    $name =~ s/\s+\z//;
+    if (!length($name)) { return ("Key name must be non-zero string") }
+    if ($name =~ /\R|=/) { return ("Key name must not contain = or newline") }
+    return ("", $name);
+}
+
+sub _validate_value {
+    my ($self, $value) = @_;
+    $value =~ s/\s+\z//;
+    if ($value =~ /\R/) { return ("Value must not contain newline") }
+    return ("", $value);
+}
+
+sub _validate_comment {
+    my ($self, $comment) = @_;
+    if ($comment =~ /\R/) { return ("Comment must not contain newline") }
+    return ("", $comment);
+}
+
 sub _find_section {
-    my ($self, $name, $opts) = @_;
-    $opts //= {};
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+    my ($name) = @_;
 
     my @res;
 
@@ -68,24 +108,60 @@ sub _find_section {
     return @res;
 }
 
+sub _find_key {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+    my ($section, $name) = @_;
+
+    my @res;
+
+    my $linum = 0;
+    my $cur_section = $self->{_iod}{default_section};
+    for my $line (@{ $self->{_raw} }) {
+        $linum++;
+        if ($line->[COL_TYPE] eq 'S') {
+            $cur_section = $line->[COL_S_SECTION];
+            next;
+        }
+        next unless $line->[COL_TYPE] eq 'K';
+        next unless $cur_section eq $section;
+        next unless $line->[COL_K_KEY] eq $name;
+        return $linum unless $opts->{all};
+        push @res, $linum;
+    }
+    return undef unless $opts->{all};
+    return @res;
+}
+
 sub insert_section {
-    my ($self, $name, $opts) = @_;
-    $opts //= {};
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my ($err, $name) = $self->_validate_section($_[0]);
+    croak $err if $err;
 
     my $raw = $self->{_raw};
 
-    $name =~ s/\A\s+//s;
-    $name =~ s/\s+\z//s;
-
     if (defined $opts->{comment}) {
-        $opts->{comment} =~ s/\R//g;
+        ($err, $opts->{comment}) = $self->_validate_comment($opts->{comment});
+        croak $err if $err;
     }
 
     if ($self->_find_section($name)) {
         if ($opts->{ignore}) {
             return;
         } else {
-            die "Can't insert section '$name': already exists";
+            croak "Can't insert section '$name': already exists";
         }
     }
 
@@ -119,6 +195,70 @@ sub insert_section {
     }
 
     splice @$raw, $linum-1, 0, @lines_to_add;
+    $linum;
+}
+
+sub insert_key {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my ($err_section, $section) = $self->_validate_section($_[0]);
+    croak $err_section if $err_section;
+    my ($err_name, $name)       = $self->_validate_key($_[1]);
+    croak $err_name if $err_name;
+    my ($err_value, $value)     = $self->_validate_value($_[2]);
+    croak $err_value if $err_value;
+
+    my $raw = $self->{_raw};
+
+    my $linum;
+    my @lines_to_add;
+
+    push @lines_to_add, [
+        'K',
+        '', # COL_K_WS1
+        $name, # COL_K_KEY
+        '', # COL_K_WS2
+        '', # COL_K_WS3
+        $value, # COL_K_VALUE_RAW
+        "\n", # COL_K_NL
+    ];
+
+    # find section
+    my $linum_section;
+    if (!($linum_section = $self->_find_section($section))) {
+        if ($opts->{create_section}) {
+            $linum_section = $self->insert_section($section);
+            $linum = $linum_section + 1;
+        } else {
+            croak "Can't insert key '$name': unknown section '$section'";
+        }
+    }
+
+    unless (defined $linum) {
+        $linum = $self->_find_key($section, $name);
+        if ($linum) {
+            croak "Can't insert key '$name': already exists";
+        } else {
+            $linum = @$raw + 1;
+        }
+    }
+
+    if ($opts->{top}) {
+        $linum = $linum_section+1; # XXX should be before other key
+    }
+
+    #XXX implement option: add
+    #XXX implement option: ignore
+    #XXX implement option: replace
+
+    splice @$raw, $linum-1, 0, @lines_to_add;
+    $linum;
 }
 
 sub as_string {
@@ -197,7 +337,7 @@ See L<Config::IOD>
 
 =head2 new(%attrs) => obj
 
-=head2 $doc->insert_section($name[, \%opts])
+=head2 $doc->insert_section([\%opts, ]$name)
 
 Insert empty section named C<$name>. Die on failure.
 
@@ -207,7 +347,7 @@ Options:
 
 =item * ignore => bool
 
-If set to 1, then if section already exists will simply return instead of die.
+If set to 1, then if section already exists will do nothing instead of die.
 
 =item * top => bool
 
@@ -217,6 +357,38 @@ end of document.
 =item * comment => str
 
 Optional. Comment to add at the end of section line.
+
+=back
+
+=head2 $doc->insert_key([\%opts, ]$section, $key, $value)
+
+Insert a key named C<$name> with value C<$value> under C<$section>. Die on
+failure.
+
+Options:
+
+=over
+
+=item * create_section => bool
+
+If set to 1, will create section (at the end of document) if it doesn't exist.
+
+=item * add => bool
+
+If set to 1, will add another key if key with the same name already exists.
+Conflicts with C<ignore> and <replace>.
+
+=item * ignore => bool
+
+If set to 1, will do nothing if key already exists. Conflicts with C<add> and
+C<replace>.
+
+=item * replace => bool
+
+If set to 1, will replace (all) previous key if key already exists. Conflicts
+with C<add> and C<ignore>.
+
+=item * top => bool
 
 =back
 
