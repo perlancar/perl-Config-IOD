@@ -82,6 +82,13 @@ sub _validate_comment {
     return ("", $comment);
 }
 
+sub _validate_linum {
+    my ($self, $value) = @_;
+    if ($value < 1) { return ("linum must be at least 1") }
+    if ($value > @{$self->{_parsed}}) { return ("linum must not be larger than number of document's lines") }
+    return ("", $value);
+}
+
 sub _blank_line {
     ["B", "\n"];
 }
@@ -170,7 +177,11 @@ sub insert_section {
     }
 
     my $linum;
-    if ($opts->{top}) {
+    if (defined $opts->{linum}) {
+        ($err, $opts->{linum}) = $self->_validate_linum($opts->{linum});
+        croak $err if $err;
+        $linum = $opts->{linum};
+    } elsif ($opts->{top}) {
         $linum = $self->_find_section;
         $linum //= 1;
     } else {
@@ -347,13 +358,17 @@ If set to 1, then if section already exists will do nothing instead of die.
 =item * top => bool
 
 If set to 1, will insert before any other section. By default will insert at the
-end of document.
+end of document. See also: C<linum>.
 
 =item * comment => str
 
 Optional. Comment to add at the end of section line.
 
-=back
+=item * linum => posint
+
+Optional. Insert at this specific line number. Ignores C<top>.
+
+=> =back
 
 =head2 $doc->insert_key([\%opts, ]$section, $key, $value)
 

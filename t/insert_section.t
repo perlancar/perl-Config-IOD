@@ -79,7 +79,24 @@ EOF2
 
     test_modify_doc({dies=>1}, sub { $_[0]->insert_section({comment=>"a\nb"}, "s1") },
                     '', undef, 'validate comment (1)');
+
+    test_modify_doc(sub { $_[0]->insert_section({linum=>2}, "s1") },
+                    <<'EOF1', <<'EOF2', 'opt:linum');
+a=1
+b=2
+c=3
+EOF1
+a=1
+[s1]
+b=2
+c=3
+EOF2
 };
+
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section({linum=>0}, "s1") },
+                    '', undef, 'validate linum (1)');
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section({linum=>2}, "s1") },
+                    "a=1\n", undef, 'validate linum (2)');
 
 DONE_TESTING:
 done_testing;
