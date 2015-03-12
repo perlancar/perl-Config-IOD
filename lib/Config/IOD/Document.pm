@@ -45,7 +45,15 @@ use constant +{
 
 sub new {
     my ($class, %attrs) = @_;
-    #croak "Please specify _parsed" unless $attrs{_parsed};
+
+    if (!$attrs{_parsed}) {
+        $attrs{_parsed} = [];
+    }
+    if (!$attrs{_parser}) {
+        require Config::IOD;
+        $attrs{_parser} = Config::IOD->new;
+    }
+
     bless \%attrs, $class;
 }
 
@@ -478,7 +486,10 @@ use overload '""' => \&as_string;
 =head1 SYNOPSIS
 
 Obtain a document object C<$doc> from parsing an IOD document text using
-L<Config::IOD>'s C<read_file> or C<read_string> method.
+L<Config::IOD>'s C<read_file> or C<read_string> method. Or, to produce an empty
+document:
+
+ $doc = Config::IOD::Document->new;
 
 Insert a section:
 
