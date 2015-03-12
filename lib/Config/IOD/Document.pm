@@ -66,6 +66,7 @@ sub _validate_key {
     $name =~ s/\s+\z//;
     if (!length($name)) { return ("Key name must be non-zero string") }
     if ($name =~ /\R|=/) { return ("Key name must not contain = or newline") }
+    if ($name =~ /\A(?:;|#|\[)/) { return ("Key name must not start with ;, #, [") }
     return ("", $name);
 }
 
@@ -119,6 +120,39 @@ sub _find_section {
     return @res;
 }
 
+sub _get_section_line_range {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+    my ($name) = @_;
+
+    my @res;
+
+    my $linum = 0;
+    my $cur_section = $self->{_parser}{default_section};
+    my $prev_section;
+    my $start;
+    for my $line (@{ $self->{_parsed} }) {
+        $linum++;
+        $start = $linum if !$start && $cur_section eq $name;
+        if ($line->[COL_TYPE] eq 'S') {
+            $cur_section = $line->[COL_S_SECTION];
+            do { push @res, [$start, $linum]; undef $start } if $start;
+            $start = $linum+1 if !$start && $cur_section eq $name;
+        }
+        goto L1 if @res && !$opts->{all};
+    }
+    $linum = $start if $start && $linum < $start;
+    push @res, [$start, $linum] if $start;
+
+  L1:
+    if ($opts->{all}) { return @res } else { return $res[0] }
+}
+
 sub _find_key {
     my $self = shift;
     my $opts;
@@ -149,6 +183,32 @@ sub _find_key {
     return @res;
 }
 
+sub _line_in_section {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+    my ($asked_linum, $asked_section) = @_;
+
+    my @res;
+
+    my $linum = 0;
+    my $cur_section = $self->{_parser}{default_section};
+    for my $line (@{ $self->{_parsed} }) {
+        $linum++;
+        if ($linum == $asked_linum) {
+            return $asked_section eq $cur_section;
+        }
+        if ($line->[COL_TYPE] eq 'S') {
+            $cur_section = $line->[COL_S_SECTION];
+        }
+    }
+    return 0;
+}
+
 sub insert_section {
     my $self = shift;
     my $opts;
@@ -170,7 +230,7 @@ sub insert_section {
 
     if ($self->_find_section($name)) {
         if ($opts->{ignore}) {
-            return;
+            return undef;
         } else {
             croak "Can't insert section '$name': already exists";
         }
@@ -211,6 +271,7 @@ sub insert_key {
         $opts = {};
     }
 
+    my $err;
     my ($err_section, $section) = $self->_validate_section($_[0]);
     croak $err_section if $err_section;
     my ($err_name, $name)       = $self->_validate_key($_[1]);
@@ -221,24 +282,17 @@ sub insert_key {
     my $p = $self->{_parsed};
 
     my $linum;
-    my @lines_to_add;
 
-    push @lines_to_add, [
-        'K',
-        '', # COL_K_WS1
-        $name, # COL_K_KEY
-        '', # COL_K_WS2
-        '', # COL_K_WS3
-        $value, # COL_K_VALUE_RAW
-        "\n", # COL_K_NL
-    ];
+    if ($opts->{replace}) {
+        $self->delete_key({all=>1}, $section, $name);
+    }
 
     # find section
-    my $linum_section;
-    if (!($linum_section = $self->_find_section($section))) {
+    my $line_range = $self->_get_section_line_range($section);
+    if (!$line_range) {
         if ($opts->{create_section}) {
-            $linum_section = $self->insert_section($section);
-            $linum = $linum_section + 1;
+            $linum = $self->insert_section($section) + 1;
+            $line_range = [$linum, $linum];
         } else {
             croak "Can't insert key '$name': unknown section '$section'";
         }
@@ -247,22 +301,112 @@ sub insert_key {
     unless (defined $linum) {
         $linum = $self->_find_key($section, $name);
         if ($linum) {
-            croak "Can't insert key '$name': already exists";
+            if ($opts->{ignore}) {
+                return undef;
+            } elsif ($opts->{add}) {
+                #
+            } elsif ($opts->{replace}) {
+                # delete already done above
+            } else {
+                croak "Can't insert key '$name': already exists";
+            }
+        }
+
+        if ($opts->{linum}) {
+            ($err, $opts->{linum}) = $self->_validate_linum($opts->{linum});
+            croak $err if $err;
+            $self->_line_in_section($opts->{linum}, $section)
+                or croak "Invalid linum $opts->{linum}: not inside section '$section'";
+            $linum = $opts->{linum};
         } else {
-            $linum = @$p + 1;
+            if ($opts->{top}) {
+                $linum = $line_range->[0];
+            } else {
+                $linum = $line_range->[1];
+                if ($p->[$linum-1]) {
+                    $linum++;
+                }
+            }
         }
     }
 
-    if ($opts->{top}) {
-        $linum = $linum_section+1; # XXX should be before other key
-    }
-
-    #XXX implement option: add
-    #XXX implement option: ignore
     #XXX implement option: replace
 
-    splice @$p, $linum-1, 0, @lines_to_add;
+    splice @$p, $linum-1, 0, [
+        'K',
+        '', # COL_K_WS1
+        $name, # COL_K_KEY
+        '', # COL_K_WS2
+        '', # COL_K_WS3
+        $value, # COL_K_VALUE_RAW
+        "\n", # COL_K_NL
+    ];
     $linum;
+}
+
+sub delete_section {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my ($err, $section) = $self->_validate_section($_[0]);
+    croak $err if $err;
+
+    my $p = $self->{_parsed};
+
+    my @line_ranges;
+    if ($opts->{all}) {
+        @line_ranges = $self->_get_section_line_range({all=>1}, $section);
+    } else {
+        @line_ranges = ($self->_get_section_line_range($section));
+        @line_ranges = () if !defined($line_ranges[0]);
+    }
+
+    my $num_deleted = 0;
+    for my $line_range (reverse @line_ranges) {
+        next unless defined $line_range;
+        my $line1 = $line_range->[0] - 1; $line1 = 1 if $line1 < 1;
+        my $line2 = $line_range->[1] - 1;
+        splice @$p, $line1-1, ($line2-$line1+1);
+        $num_deleted++;
+    }
+    $num_deleted;
+}
+
+sub delete_key {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my ($err_section, $section) = $self->_validate_section($_[0]);
+    croak $err_section if $err_section;
+    my ($err_name, $name) = $self->_validate_key($_[1]);
+    croak $err_name if $err_name;
+
+    my $p = $self->{_parsed};
+
+    my @linums;
+    if ($opts->{all}) {
+        @linums = $self->_find_key({all=>1}, $section, $name);
+    } else {
+        @linums = ($self->_find_key($section, $name));
+        @linums = () if !defined($linums[0]);
+    }
+
+    my $num_deleted = 0;
+    for my $linum (reverse @linums) {
+        splice @$p, $linum-1, 1;
+        $num_deleted++;
+    }
+    $num_deleted;
 }
 
 sub as_string {
@@ -369,7 +513,7 @@ Optional. Comment to add at the end of section line.
 
 Optional. Insert at this specific line number. Ignores C<top>.
 
-=> =back
+=back
 
 =head2 $doc->insert_key([\%opts, ]$section, $key, $value)
 
@@ -400,6 +544,14 @@ If set to 1, will replace (all) previous key if key already exists. Conflicts
 with C<add> and C<ignore>.
 
 =item * top => bool
+
+If set to 1, will insert at the top of section before other keys. By default
+will add at the end of section.
+
+=item * linum => posint
+
+Optional. Insert at this specific line number. Line number must fall within
+section. Ignores C<top>.
 
 =back
 
