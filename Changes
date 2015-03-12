@@ -1,5 +1,13 @@
 Revision history for Config-IOD
 
+0.10     2015-03-12 (PERLANCAR)
+
+         - Allow creating empty document using: '$doc =
+           Config::IOD::Document->new'.
+
+         - POD tweaks/fixes/additions.
+
+
 0.09     2015-03-12 (PERLANCAR)
 
          - Split specification to another dist (IOD). This has been done since
