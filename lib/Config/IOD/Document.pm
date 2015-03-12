@@ -343,9 +343,10 @@ See L<Config::IOD>
 
 =head2 new(%attrs) => obj
 
-=head2 $doc->insert_section([\%opts, ]$name)
+=head2 $doc->insert_section([\%opts, ]$name) => int
 
-Insert empty section named C<$name>. Die on failure.
+Insert empty section named C<$name>. Return line number where the section is
+inserted. Die on failure.
 
 Options:
 
