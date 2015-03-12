@@ -8,12 +8,14 @@ use Test::Config::IOD qw(test_modify_doc);
 use Test::More 0.98;
 
 subtest "insert_section" => sub {
-    test_modify_doc(sub { $_[0]->insert_section("s1") }, <<'EOF1', <<'EOF2', 'empty');
+    test_modify_doc(sub { $_[0]->insert_section("s1") },
+                    <<'EOF1', <<'EOF2', 'empty');
 EOF1
 [s1]
 EOF2
 
-    test_modify_doc(sub { $_[0]->insert_section("s1") }, <<'EOF1', <<'EOF2', 'placed after other section');
+    test_modify_doc(sub { $_[0]->insert_section("s1") },
+                    <<'EOF1', <<'EOF2', 'placed after other section');
 [s0]
 a=1
 EOF1
@@ -22,7 +24,8 @@ a=1
 [s1]
 EOF2
 
-    test_modify_doc(sub { $_[0]->insert_section({top=>1}, "s1") }, <<'EOF1', <<'EOF2', 'opt:top=1 -> placed before other section');
+    test_modify_doc(sub { $_[0]->insert_section({top=>1}, "s1") },
+                    <<'EOF1', <<'EOF2', 'opt:top=1 -> placed before other section');
 [s0]
 a=1
 EOF1
@@ -31,7 +34,8 @@ EOF1
 a=1
 EOF2
 
-    test_modify_doc(sub { $_[0]->insert_section({top=>1}, "s1") }, <<'EOF1', <<'EOF2', 'opt:top=1 -> placed before other section (2)');
+    test_modify_doc(sub { $_[0]->insert_section({top=>1}, "s1") },
+                    <<'EOF1', <<'EOF2', 'opt:top=1 -> placed before other section (2)');
 ;comment
 [s0]
 a=1
@@ -42,17 +46,20 @@ EOF1
 a=1
 EOF2
 
-    test_modify_doc({dies=>1}, sub { $_[0]->insert_section("s1") }, <<'EOF1', undef, 'existing section -> dies');
+    test_modify_doc({dies=>1}, sub { $_[0]->insert_section("s1") },
+                    <<'EOF1', undef, 'existing section -> dies');
 [s1]
 EOF1
 
-    test_modify_doc(sub { $_[0]->insert_section({ignore=>1}, "s1") }, <<'EOF1', <<'EOF2', 'opt:ignore=1 existing section -> noop');
+    test_modify_doc(sub { $_[0]->insert_section({ignore=>1}, "s1") },
+                    <<'EOF1', <<'EOF2', 'opt:ignore=1 existing section -> noop');
 [s1]
 EOF1
 [s1]
 EOF2
 
-    test_modify_doc(sub { $_[0]->insert_section({comment=>"foo"}, "s1") }, <<'EOF1', <<'EOF2', 'opt:comment');
+    test_modify_doc(sub { $_[0]->insert_section({comment=>"foo"}, "s1") },
+                    <<'EOF1', <<'EOF2', 'opt:comment');
 EOF1
 [s1] ;foo
 EOF2
