@@ -186,18 +186,7 @@ Read IOD document from a file or string, return L<Config::IOD::Document> object:
  my $doc = $iod->read_file("/path/to/some.iod");
  my $doc = $iod->read_string("...");
 
-Insert a section:
-
- $iod->insert_section('name');
-
- # don't insert if section already exists
- $iod->insert_section('name', {ignore=>1});
-
-Dump back object as IOD document string:
-
- print $doc->as_string;
- # or just:
- print $doc;
+See Config::IOD::Document for methods available for C<$doc>.
 
 
 =head1 EXPRESSION

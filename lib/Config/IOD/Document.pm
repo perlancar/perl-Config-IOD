@@ -477,7 +477,62 @@ use overload '""' => \&as_string;
 
 =head1 SYNOPSIS
 
-See L<Config::IOD>
+Obtain a document object C<$doc> from parsing an IOD document text using
+L<Config::IOD>'s C<read_file> or C<read_string> method.
+
+Insert a section:
+
+ $doc->insert_section('name');
+
+ # no nothing (instead of die) if section already exists
+ $doc->insert_section({ignore=>1}, 'name');
+
+ # insert at the top of document instead of bottom
+ $doc->insert_section({top=>1}, 'name');
+
+ # insert at specific location (line number), add some comment
+ $doc->insert_section({linum=>12, comment=>"foo"}, 'name');
+
+Insert a key:
+
+ $doc->insert_key('section', 'key', 'value');
+
+ # do nothing (instead of die) if key already exists
+ $doc->insert_key({ignore=>1}, 'section', 'key', 'value');
+
+ # add key anyway (creating multivalue key) if key already exists
+ $doc->insert_key({add=>1}, 'section', 'key', 'value');
+
+ # replace (delete all occurrences of previous key first) if key already exists
+ $doc->insert_key({replace=>1}, 'section', 'key', 'value');
+
+ # insert at the top of section, instead of at the bottom
+ $doc->insert_key({top=>1}, 'section', 'key', 'value');
+
+ # insert at specific location (line number)
+ $doc->insert_key({linum=>12}, 'section', 'name', 'value');
+
+Delete a section (and all keys under it):
+
+ $doc->delete_section('name');
+
+ # delete all occurrences instead of just the first one
+ $doc->delete_section({all=>1}, 'name');
+
+Delete a key:
+
+ $doc->delete_key('section', 'key');
+
+ # delete all occurrences instead of just the first one
+ $doc->delete_key({all=>1}, 'section', 'key');
+
+Dump back object as IOD document string:
+
+ print $doc->as_string;
+
+ # or just:
+ print $doc;
+
 
 
 =head1 ATTRIBUTES
@@ -486,6 +541,11 @@ See L<Config::IOD>
 =head1 METHODS
 
 =head2 new(%attrs) => obj
+
+=head2 $doc->as_string => str
+
+Return document object rendered as string. Automatically used for
+stringification.
 
 =head2 $doc->insert_section([\%opts, ]$name) => int
 
