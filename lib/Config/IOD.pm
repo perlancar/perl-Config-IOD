@@ -189,11 +189,6 @@ Read IOD document from a file or string, return L<Config::IOD::Document> object:
 See Config::IOD::Document for methods available for C<$doc>.
 
 
-=head1 EXPRESSION
-
-# INSERT_BLOCK: Config::IOD::Base expression
-
-
 =head1 ATTRIBUTES
 
 # INSERT_BLOCK: Config::IOD::Base attributes
