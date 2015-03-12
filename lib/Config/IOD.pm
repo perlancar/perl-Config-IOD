@@ -17,13 +17,13 @@ sub _init_read {
 }
 
 our $re_directive_abo =
-    qr/^(?P<comment_char>;?)(?P<ws1>\s*)!
-       (?P<ws2>\s*)(?P<directive>\w+)(?P<ws3>\s*)(?P<args_raw>.*)
-       (?P<nl>\R?)\z/x;
+    qr/^(;?)(\s*)!
+       (\s*)(\w+)(\s*)(.*)
+       (\R?)\z/x;
 our $re_directive =
-    qr/^;(?P<ws1>\s*)!
-       (?P<ws2>\s*)(?P<directive>\w+)(?P<ws3>\s*)(?P<args_raw>.*)
-       (?P<nl>\R?)\z/x;
+    qr/^(;)(\s*)!
+       (\s*)(\w+)(\s*)(.*)
+       (\R?)\z/x;
 
 sub _read_string {
     my ($self, $str) = @_;
@@ -47,8 +47,16 @@ sub _read_string {
 
         # directive line
         if ($line =~ s/$directive_re//) {
-            push @$res, {type=>'D', %+};
-            my $directive = $+{directive};
+            push @$res, {
+                type=>'D',
+                comment_char=>$1,
+                ws1=>$2,
+                ws2=>$3,
+                directive=>$4,
+                ws4=>$5,
+                args_raw=>$6,
+            };
+            my $directive = $4;
             if ($self->{allow_directives}) {
                 $self->_err("Directive '$directive' is not in ".
                                 "allow_directives list")
@@ -61,7 +69,7 @@ sub _read_string {
                     if grep { $_ eq $directive }
                         @{$self->{disallow_directives}};
             }
-            my $args = $self->_parse_command_line($+{args_raw});
+            my $args = $self->_parse_command_line($6);
             if (!defined($args)) {
                 $self->_err("Invalid arguments syntax '$line'");
             }
@@ -90,25 +98,49 @@ sub _read_string {
         }
 
         # comment line
-        if ($line =~ /^(?P<ws1>\s*)(?P<comment_char>[;#])(?P<comment>.*?)
-                      (?P<nl>\R?)\z/x) {
-            push @$res, {type=>'C', %+};
+        if ($line =~ /^(\s*)([;#])(.*?)
+                      (\R?)\z/x) {
+            push @$res, {
+                type=>'C',
+                ws1=>$1,
+                comment_char=>$2,
+                comment=>$3,
+                nl=>$4,
+            };
             next LINE;
         }
 
         # section line
-        if ($line =~ /^(?P<ws1>\s*)\[(?P<ws2>\s*)(?P<section>.+?)(?P<ws3>\s*)\]
-                      (?: (?P<ws4>\s*)(?P<comment_char>[;#])(?P<comment>.*))?
-                      (?P<nl>\R?)\z/x) {
-            push @$res, {type=>'S', %+};
+        if ($line =~ /^(\s*)\[(\s*)(.+?)(\s*)\]
+                      (?: (\s*)([;#])(.*))?
+                      (\R?)\z/x) {
+            push @$res, {
+                type=>'S',
+                ws1=>$1,
+                ws2=>$2,
+                section=>$3,
+                ws3=>$4,
+                ws4=>$5,
+                comment_char=>$6,
+                comment=>$7,
+                nl=>$8,
+            };
             next LINE;
         }
 
         # key line
-        if ($line =~ /^(?P<ws1>\s*)(?P<key>[^=]+?)(?P<ws2>\s*)=
-                      (?P<ws3>\s*)(?P<value_raw>.*?)
-                      (?P<nl>\R?)\z/x) {
-            push @$res, {type=>'K', %+};
+        if ($line =~ /^(\s*)([^=]+?)(\s*)=
+                      (\s*)(.*?)
+                      (\R?)\z/x) {
+            push @$res, {
+                type=>'K',
+                ws1=>$1,
+                key=>$2,
+                ws2=>$3,
+                ws3=>$4,
+                value_raw=>$5,
+                nl=>$6,
+            };
             next LINE;
         }
 
