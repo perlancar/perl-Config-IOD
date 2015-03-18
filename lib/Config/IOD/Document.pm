@@ -660,33 +660,55 @@ Dump back object as IOD document string:
 Return document object rendered as string. Automatically used for
 stringification.
 
-=head2 $doc->insert_section([\%opts, ]$name) => int
+=head2 $doc->delete_key([\%opts, ]$section, $name) => $num_deleted
 
-Insert empty section named C<$name>. Return line number where the section is
-inserted. Die on failure.
+Delete key named C<$name> in section named C<$section>.
 
 Options:
 
 =over
 
-=item * ignore => bool
+=item * all => bool
 
-If set to 1, then if section already exists will do nothing instead of die.
-
-=item * top => bool
-
-If set to 1, will insert before any other section. By default will insert at the
-end of document. See also: C<linum>.
-
-=item * comment => str
-
-Optional. Comment to add at the end of section line.
-
-=item * linum => posint
-
-Optional. Insert at this specific line number. Ignores C<top>.
+If set to 1, then will delete all occurrences. By default only delete the first
+occurrence.
 
 =back
+
+=head2 $doc->delete_section([\%opts, ]$section) => $num_deleted
+
+Delete section named C<$section>.
+
+Options:
+
+=over
+
+=item * all => bool
+
+If set to 1, then will delete all occurrences. By default only delete the first
+occurrence.
+
+=back
+
+=head2 $doc->dump() => hoh
+
+Return a hoh (hash of section names and hashes, where each of the second-level
+hash is of keys and values), Values will be decoded and merging will be done,
+but includes are not processed (even though C<include> directive is active).
+
+=head2 $doc->empty()
+
+Empty document.
+
+=head2 $doc->get_value($section, $key) => $value
+
+Get value. Values are decoded and section merging is respected, but includes are
+not processed.
+
+Internally, will do a C<dump()> and cache the result so subsequent
+C<get_value()> will avoid re-parsing the whole document. (The cache will
+automatically be discarded is one of document-modifying methods like
+C<delete_section()> is called.)
 
 =head2 $doc->insert_key([\%opts, ]$section, $key, $value)
 
@@ -728,55 +750,33 @@ section. Ignores C<top>.
 
 =back
 
-=head2 $doc->delete_section([\%opts, ]$section) => $num_deleted
+=head2 $doc->insert_section([\%opts, ]$name) => int
 
-Delete section named C<$section>.
-
-Options:
-
-=over
-
-=item * all => bool
-
-If set to 1, then will delete all occurrences. By default only delete the first
-occurrence.
-
-=back
-
-=head2 $doc->delete_key([\%opts, ]$section, $name) => $num_deleted
-
-Delete key named C<$name> in section named C<$section>.
+Insert empty section named C<$name>. Return line number where the section is
+inserted. Die on failure.
 
 Options:
 
 =over
 
-=item * all => bool
+=item * ignore => bool
 
-If set to 1, then will delete all occurrences. By default only delete the first
-occurrence.
+If set to 1, then if section already exists will do nothing instead of die.
+
+=item * top => bool
+
+If set to 1, will insert before any other section. By default will insert at the
+end of document. See also: C<linum>.
+
+=item * comment => str
+
+Optional. Comment to add at the end of section line.
+
+=item * linum => posint
+
+Optional. Insert at this specific line number. Ignores C<top>.
 
 =back
-
-=head2 $doc->dump() => hoh
-
-Return a hoh (hash of section names and hashes, where each of the second-level
-hash is of keys and values), Values will be decoded and merging will be done,
-but includes are not processed (even though C<include> directive is active).
-
-=head2 $doc->empty()
-
-Empty document.
-
-=head2 $doc->get_value($section, $key) => $value
-
-Get value. Values are decoded and section merging is respected, but includes are
-not processed.
-
-Internally, will do a C<dump()> and cache the result so subsequent
-C<get_value()> will avoid re-parsing the whole document. (The cache will
-automatically be discarded is one of document-modifying methods like
-C<delete_section()> is called.)
 
 
 =head1 SEE ALSO
