@@ -57,6 +57,12 @@ sub new {
     bless \%attrs, $class;
 }
 
+sub empty {
+    my $self = shift;
+    $self->_discard_cache;
+    $self->{_parsed} = [];
+}
+
 # all _validate_*() methods return ($err_msg, $validated_val)
 
 sub _validate_section {
