@@ -1,5 +1,8 @@
 package Test::Config::IOD;
 
+# DATE
+# VERSION
+
 use 5.010;
 use strict;
 use warnings;
