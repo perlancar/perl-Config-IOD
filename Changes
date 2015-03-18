@@ -1,5 +1,12 @@
 Revision history for Config-IOD
 
+0.13    2015-03-18 (PERLANCAR)
+
+        - No functional changes.
+
+        - [dist] Specify dependency to spec IOD.
+
+
 0.12    2015-03-18 (PERLANCAR)
 
 	- No functional changes.
