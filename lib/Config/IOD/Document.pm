@@ -186,6 +186,12 @@ sub dump {
     $res;
 }
 
+sub get_value {
+    my ($self, $section, $key) = @_;
+    $self->{_dump_cache} = $self->dump unless $self->{_dump_cache};
+    $self->{_dump_cache}{$section}{$key};
+}
+
 sub _find_section {
     my $self = shift;
     my $opts;
@@ -351,6 +357,8 @@ sub insert_section {
         $opts->{comment}, # COL_S_COMMENT
         "\n", # COL_S_NL
     ];
+
+    $self->_discard_cache;
     $linum;
 }
 
@@ -433,6 +441,7 @@ sub insert_key {
         $value, # COL_K_VALUE_RAW
         "\n", # COL_K_NL
     ];
+    $self->_discard_cache;
     $linum;
 }
 
@@ -466,6 +475,7 @@ sub delete_section {
         splice @$p, $line1-1, ($line2-$line1+1);
         $num_deleted++;
     }
+    $self->_discard_cache if $num_deleted;
     $num_deleted;
 }
 
@@ -498,6 +508,8 @@ sub delete_key {
         splice @$p, $linum-1, 1;
         $num_deleted++;
     }
+
+    $self->_discard_cache if $num_deleted;
     $num_deleted;
 }
 
