@@ -1,5 +1,13 @@
 Revision history for Config-IOD
 
+0.12    2015-03-18 (PERLANCAR)
+
+	- No functional changes.
+
+	- [Bugfix] insert_key(): Fix insert location when current line is a
+	  section line.
+
+
 0.11     2015-03-18 (PERLANCAR)
 
          - Add document methods: empty(), dump(), get_value().
