@@ -593,6 +593,14 @@ document:
 
  $doc = Config::IOD::Document->new;
 
+Dump document as hash of hashes:
+
+ $hoh = $doc->dump;
+
+Get a value:
+
+ $val = $doc->get_value('section', 'key');
+
 Insert a section:
 
  $doc->insert_section('name');
@@ -639,7 +647,11 @@ Delete a key:
  # delete all occurrences instead of just the first one
  $doc->delete_key({all=>1}, 'section', 'key');
 
-Dump back object as IOD document string:
+Empty document:
+
+ $doc->empty;
+
+Dump object as IOD document string:
 
  print $doc->as_string;
 
