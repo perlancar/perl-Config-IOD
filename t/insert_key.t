@@ -68,7 +68,31 @@ a=value
 EOF2
 
     test_modify_doc(sub { $_[0]->insert_key("s1", "key", "value") },
-                    <<'EOF1', <<'EOF2', 'placement at the bottom');
+                    <<'EOF1', <<'EOF2', 'placement at the bottom (1)');
+[s1]
+EOF1
+[s1]
+key=value
+EOF2
+
+    test_modify_doc(sub { $_[0]->insert_key("s1", "key", "value") },
+                    <<'EOF1', <<'EOF2', 'placement at the bottom (1)');
+[s1]
+a=1
+b=2
+
+[s2]
+EOF1
+[s1]
+a=1
+b=2
+
+key=value
+[s2]
+EOF2
+
+    test_modify_doc(sub { $_[0]->insert_key("s1", "key", "value") },
+                    <<'EOF1', <<'EOF2', 'placement at the bottom (3)');
 [s1]
 a=1
 b=2

@@ -430,7 +430,10 @@ sub insert_key {
             } else {
                 $linum = $line_range->[1];
                 if ($p->[$linum-1]) {
-                    $linum++;
+                    if ($p->[$linum-1][COL_TYPE] eq 'S') {
+                    } else {
+                        $linum++;
+                    }
                 }
             }
         }
