@@ -764,6 +764,20 @@ Return a hoh (hash of section names and hashes, where each of the second-level
 hash is of keys and values), Values will be decoded and merging will be done,
 but includes are not processed (even though C<include> directive is active).
 
+=head2 $doc->empty()
+
+Empty document.
+
+=head2 $doc->get_value($section, $key) => $value
+
+Get value. Values are decoded and section merging is respected, but includes are
+not processed.
+
+Internally, will do a C<dump()> and cache the result so subsequent
+C<get_value()> will avoid re-parsing the whole document. (The cache will
+automatically be discarded is one of document-modifying methods like
+C<delete_section()> is called.)
+
 
 =head1 SEE ALSO
 
