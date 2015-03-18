@@ -102,6 +102,90 @@ sub _blank_line {
     ["B", "\n"];
 }
 
+# cache is used for get_value() and get_raw_value() to avoid re-scanning the
+# files on every invocation. but whenever one of document-modifying methods is
+# called, we discard the cache
+sub _discard_cache {
+    my $self = shift;
+    delete $self->{_dump_cache};
+}
+
+sub dump {
+    my $self = shift;
+
+    my $linum = 0;
+    my $merge;
+    my $cur_section = $self->{_parser}{default_section};
+    my $res = {};
+    my $arrayified = {};
+    my $num_seen_section_lines = 0;
+
+    my $_merge = sub {
+        return if $cur_section eq $merge;
+        croak "IOD document:$linum: Can't merge section '$merge' to ".
+            "'$cur_section': Section '$merge' not seen yet"
+                unless exists $res->{$merge};
+        for my $k (keys %{ $res->{$merge} }) {
+            $res->{$cur_section}{$k} //= $res->{$merge}{$k};
+        }
+    };
+
+    for my $line (@{ $self->{_parsed} }) {
+        $linum++;
+        my $type = $line->[COL_TYPE];
+        if ($type eq 'D') {
+            my $directive = $line->[COL_D_DIRECTIVE];
+            if ($directive eq 'merge') {
+                my $args = $self->{_parser}->_parse_command_line(
+                    $line->[COL_D_ARGS_RAW]);
+                if (!defined($args)) {
+                    croak "IOD document:$linum: Invalid arguments syntax '".
+                        $line->[COL_D_ARGS_RAW]."'";
+                }
+                $merge = @$args ? $args->[0] : undef;
+            } # ignore the other directives
+        } elsif ($type eq 'S') {
+            $num_seen_section_lines++;
+            # merge previous section
+            $_merge->() if defined($merge) && $num_seen_section_lines > 1;
+            $cur_section = $line->[COL_S_SECTION];
+            $res->{$cur_section} //= {};
+        } elsif ($type eq 'K') {
+            # the common case is that value are not decoded or
+            # quoted/bracketed/braced, so we avoid calling _parse_raw_value here
+            # to avoid overhead
+            my $key = $line->[COL_K_KEY];
+            my $val = $line->[COL_K_VALUE_RAW];
+            if ($val =~ /\A["!\\[\{]/) {
+                my ($err, $parse_res, $decoded_val) =
+                    $self->{_parser}->_parse_raw_value($val);
+                croak "IOD document:$linum: Invalid value: $err" if $err;
+                $val = $decoded_val;
+            } else {
+                $val =~ s/\s*[#;].*//; # strip comment
+            }
+
+            if (exists $res->{$cur_section}{$key}) {
+                if (!$self->{_parser}{allow_duplicate_key}) {
+                    croak "IOD document:$linum: Duplicate key: $key ".
+                        "(section $cur_section)";
+                } elsif ($arrayified->{$cur_section}{$key}++) {
+                    push @{ $res->{$cur_section}{$key} }, $val;
+                } else {
+                    $res->{$cur_section}{$key} = [
+                        $res->{$cur_section}{$key}, $val];
+                }
+            } else {
+                $res->{$cur_section}{$key} = $val;
+            }
+        } # ignore the other line types
+    }
+
+    $_merge->() if defined($merge) && $num_seen_section_lines > 1;;
+
+    $res;
+}
+
 sub _find_section {
     my $self = shift;
     my $opts;
@@ -655,6 +739,12 @@ If set to 1, then will delete all occurrences. By default only delete the first
 occurrence.
 
 =back
+
+=head2 $doc->dump() => hoh
+
+Return a hoh (hash of section names and hashes, where each of the second-level
+hash is of keys and values), Values will be decoded and merging will be done,
+but includes are not processed (even though C<include> directive is active).
 
 
 =head1 SEE ALSO
