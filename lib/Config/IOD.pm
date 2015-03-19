@@ -47,6 +47,40 @@ sub _read_string {
             next LINE;
         }
 
+        # key line
+        if ($line =~ /^(\s*)([^=]+?)(\s*)=
+                      (\s*)(.*?)
+                      (\R?)\z/x) {
+            push @$res, [
+                'K',
+                $1, # COL_K_WS1
+                $2, # COL_K_KEY
+                $3, # COL_K_WS2
+                $4, # COL_K_WS3
+                $5, # COL_K_VALUE_RAW
+                $6, # COL_K_NL
+            ];
+            next LINE;
+        }
+
+        # section line
+        if ($line =~ /^(\s*)\[(\s*)(.+?)(\s*)\]
+                      (?: (\s*)([;#])(.*))?
+                      (\R?)\z/x) {
+            push @$res, [
+                'S',
+                $1, # COL_S_WS1
+                $2, # COL_S_WS2
+                $3, # COL_S_SECTION
+                $4, # COL_S_WS3
+                $5, # COL_S_WS4
+                $6, # COL_S_COMMENT_CHAR
+                $7, # COL_S_COMMENT
+                $8, # COL_S_NL
+            ];
+            next LINE;
+        }
+
         # directive line
         if ($line =~ s/$directive_re//) {
             push @$res, [
@@ -95,11 +129,17 @@ sub _read_string {
             } elsif ($directive eq 'merge') {
             } elsif ($directive eq 'noop') {
             } else {
-                $self->_err("Unknown directive '$directive'");
+                if ($self->{ignore_unknown_directive}) {
+                    # assume a regular comment
+                    goto L1;
+                } else {
+                    $self->_err("Unknown directive '$directive'");
+                }
             }
             next LINE;
         }
 
+      L1:
         # comment line
         if ($line =~ /^(\s*)([;#])(.*?)
                       (\R?)\z/x) {
@@ -109,40 +149,6 @@ sub _read_string {
                 $2, # COL_C_COMMENT_CHAR
                 $3, # COL_C_COMMENT
                 $4, # COL_C_NL
-            ];
-            next LINE;
-        }
-
-        # section line
-        if ($line =~ /^(\s*)\[(\s*)(.+?)(\s*)\]
-                      (?: (\s*)([;#])(.*))?
-                      (\R?)\z/x) {
-            push @$res, [
-                'S',
-                $1, # COL_S_WS1
-                $2, # COL_S_WS2
-                $3, # COL_S_SECTION
-                $4, # COL_S_WS3
-                $5, # COL_S_WS4
-                $6, # COL_S_COMMENT_CHAR
-                $7, # COL_S_COMMENT
-                $8, # COL_S_NL
-            ];
-            next LINE;
-        }
-
-        # key line
-        if ($line =~ /^(\s*)([^=]+?)(\s*)=
-                      (\s*)(.*?)
-                      (\R?)\z/x) {
-            push @$res, [
-                'K',
-                $1, # COL_K_WS1
-                $2, # COL_K_KEY
-                $3, # COL_K_WS2
-                $4, # COL_K_WS3
-                $5, # COL_K_VALUE_RAW
-                $6, # COL_K_NL
             ];
             next LINE;
         }
