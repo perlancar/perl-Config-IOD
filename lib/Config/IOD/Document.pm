@@ -119,9 +119,11 @@ sub _discard_cache {
 sub dump {
     my $self = shift;
 
+    my $parser = $self->{_parser};
+
     my $linum = 0;
     my $merge;
-    my $cur_section = $self->{_parser}{default_section};
+    my $cur_section = $parser->{default_section};
     my $res = {};
     my $arrayified = {};
     my $num_seen_section_lines = 0;
@@ -136,13 +138,18 @@ sub dump {
         }
     };
 
+    # TMP HACK. for _decode_expr, this is currently rather hackish because
+    # Config::IOD::Base expects some state in $parser
+    local $parser->{_res} = $res if $parser->{enable_expr};
+    local $parser->{_cur_section} = $cur_section if $parser->{enable_expr};
+
     for my $line (@{ $self->{_parsed} }) {
         $linum++;
         my $type = $line->[COL_TYPE];
         if ($type eq 'D') {
             my $directive = $line->[COL_D_DIRECTIVE];
             if ($directive eq 'merge') {
-                my $args = $self->{_parser}->_parse_command_line(
+                my $args = $parser->_parse_command_line(
                     $line->[COL_D_ARGS_RAW]);
                 if (!defined($args)) {
                     croak "IOD document:$linum: Invalid arguments syntax '".
@@ -155,6 +162,7 @@ sub dump {
             # merge previous section
             $_merge->() if defined($merge) && $num_seen_section_lines > 1;
             $cur_section = $line->[COL_S_SECTION];
+            $parser->{_cur_section} = $cur_section if $parser->{enable_expr}; #TMP HACK
             $res->{$cur_section} //= {};
         } elsif ($type eq 'K') {
             # the common case is that value are not decoded or
@@ -164,7 +172,7 @@ sub dump {
             my $val = $line->[COL_K_VALUE_RAW];
             if ($val =~ /\A["!\\[\{]/) {
                 my ($err, $parse_res, $decoded_val) =
-                    $self->{_parser}->_parse_raw_value($val);
+                    $parser->_parse_raw_value($val);
                 croak "IOD document:$linum: Invalid value: $err" if $err;
                 $val = $decoded_val;
             } else {
@@ -172,7 +180,7 @@ sub dump {
             }
 
             if (exists $res->{$cur_section}{$key}) {
-                if (!$self->{_parser}{allow_duplicate_key}) {
+                if (!$parser->{allow_duplicate_key}) {
                     croak "IOD document:$linum: Duplicate key: $key ".
                         "(section $cur_section)";
                 } elsif ($arrayified->{$cur_section}{$key}++) {
