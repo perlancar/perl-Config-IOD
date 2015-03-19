@@ -1,5 +1,14 @@
 Revision history for Config-IOD
 
+0.14    2015-03-19 (PERLANCAR)
+
+        - Support option: ignore_unknown_directive (Config::IOD::Base 0.13).
+
+        - [Bugfix] Fix expr decoding.
+
+        - [Internal] Add tests from Test::Config::IOD::Common.
+
+
 0.13    2015-03-18 (PERLANCAR)
 
         - No functional changes.
