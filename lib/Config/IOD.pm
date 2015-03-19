@@ -82,6 +82,7 @@ sub _read_string {
         }
 
         # directive line
+        my $line0 = $line;
         if ($line =~ s/$directive_re//) {
             push @$res, [
                 'D',
@@ -131,6 +132,7 @@ sub _read_string {
             } else {
                 if ($self->{ignore_unknown_directive}) {
                     # assume a regular comment
+                    $line = $line0;
                     goto L1;
                 } else {
                     $self->_err("Unknown directive '$directive'");
