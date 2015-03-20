@@ -584,7 +584,7 @@ sub as_string {
                 $line->[COL_K_NL],
             );
         } else {
-            die "BUG: Unknown type '$type' in line $linum";
+            croak "BUG: Unknown type '$type' in line $linum";
         }
     }
 
