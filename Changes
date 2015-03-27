@@ -1,5 +1,12 @@
 Revision history for Config-IOD
 
+0.15    2015-03-27 (PERLANCAR)
+
+        - No functional changes.
+
+        - Adjust to IOD::Examples 0.15, which now puts shared files in tarball.
+
+
 0.14    2015-03-19 (PERLANCAR)
 
         - Support option: ignore_unknown_directive (Config::IOD::Base 0.13).
