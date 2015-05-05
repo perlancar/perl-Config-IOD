@@ -1,5 +1,12 @@
 Revision history for Config-IOD
 
+0.16    2015-05-05 (PERLANCAR)
+
+	- No functional changes.
+
+	- [opt] Reduce startup overhead by avoiding Carp.
+
+
 0.15    2015-03-27 (PERLANCAR)
 
         - No functional changes.
