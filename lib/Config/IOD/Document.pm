@@ -6,7 +6,7 @@ package Config::IOD::Document;
 use 5.010;
 use strict;
 use warnings;
-use Carp;
+#use Carp; # avoided to shave a bit of startup time
 
 use constant +{
     COL_TYPE => 0,
@@ -130,7 +130,7 @@ sub dump {
 
     my $_merge = sub {
         return if $cur_section eq $merge;
-        croak "IOD document:$linum: Can't merge section '$merge' to ".
+        die "IOD document:$linum: Can't merge section '$merge' to ".
             "'$cur_section': Section '$merge' not seen yet"
                 unless exists $res->{$merge};
         for my $k (keys %{ $res->{$merge} }) {
@@ -152,7 +152,7 @@ sub dump {
                 my $args = $parser->_parse_command_line(
                     $line->[COL_D_ARGS_RAW]);
                 if (!defined($args)) {
-                    croak "IOD document:$linum: Invalid arguments syntax '".
+                    die "IOD document:$linum: Invalid arguments syntax '".
                         $line->[COL_D_ARGS_RAW]."'";
                 }
                 $merge = @$args ? $args->[0] : undef;
@@ -173,7 +173,7 @@ sub dump {
             if ($val =~ /\A["!\\[\{]/) {
                 my ($err, $parse_res, $decoded_val) =
                     $parser->_parse_raw_value($val);
-                croak "IOD document:$linum: Invalid value: $err" if $err;
+                die "IOD document:$linum: Invalid value: $err" if $err;
                 $val = $decoded_val;
             } else {
                 $val =~ s/\s*[#;].*//; # strip comment
@@ -181,7 +181,7 @@ sub dump {
 
             if (exists $res->{$cur_section}{$key}) {
                 if (!$parser->{allow_duplicate_key}) {
-                    croak "IOD document:$linum: Duplicate key: $key ".
+                    die "IOD document:$linum: Duplicate key: $key ".
                         "(section $cur_section)";
                 } elsif ($arrayified->{$cur_section}{$key}++) {
                     push @{ $res->{$cur_section}{$key} }, $val;
@@ -331,27 +331,27 @@ sub insert_section {
     }
 
     my ($err, $name) = $self->_validate_section($_[0]);
-    croak $err if $err;
+    die $err if $err;
 
     my $p = $self->{_parsed};
 
     if (defined $opts->{comment}) {
         ($err, $opts->{comment}) = $self->_validate_comment($opts->{comment});
-        croak $err if $err;
+        die $err if $err;
     }
 
     if ($self->_find_section($name)) {
         if ($opts->{ignore}) {
             return undef;
         } else {
-            croak "Can't insert section '$name': already exists";
+            die "Can't insert section '$name': already exists";
         }
     }
 
     my $linum;
     if (defined $opts->{linum}) {
         ($err, $opts->{linum}) = $self->_validate_linum($opts->{linum});
-        croak $err if $err;
+        die $err if $err;
         $linum = $opts->{linum};
     } elsif ($opts->{top}) {
         $linum = $self->_find_section;
@@ -387,11 +387,11 @@ sub insert_key {
 
     my $err;
     my ($err_section, $section) = $self->_validate_section($_[0]);
-    croak $err_section if $err_section;
+    die $err_section if $err_section;
     my ($err_name, $name)       = $self->_validate_key($_[1]);
-    croak $err_name if $err_name;
+    die $err_name if $err_name;
     my ($err_value, $value)     = $self->_validate_value($_[2]);
-    croak $err_value if $err_value;
+    die $err_value if $err_value;
 
     my $p = $self->{_parsed};
 
@@ -408,7 +408,7 @@ sub insert_key {
             $linum = $self->insert_section($section) + 1;
             $line_range = [$linum, $linum];
         } else {
-            croak "Can't insert key '$name': unknown section '$section'";
+            die "Can't insert key '$name': unknown section '$section'";
         }
     }
 
@@ -422,15 +422,15 @@ sub insert_key {
             } elsif ($opts->{replace}) {
                 # delete already done above
             } else {
-                croak "Can't insert key '$name': already exists";
+                die "Can't insert key '$name': already exists";
             }
         }
 
         if ($opts->{linum}) {
             ($err, $opts->{linum}) = $self->_validate_linum($opts->{linum});
-            croak $err if $err;
+            die $err if $err;
             $self->_line_in_section($opts->{linum}, $section)
-                or croak "Invalid linum $opts->{linum}: not inside section '$section'";
+                or die "Invalid linum $opts->{linum}: not inside section '$section'";
             $linum = $opts->{linum};
         } else {
             if ($opts->{top}) {
@@ -472,7 +472,7 @@ sub delete_section {
     }
 
     my ($err, $section) = $self->_validate_section($_[0]);
-    croak $err if $err;
+    die $err if $err;
 
     my $p = $self->{_parsed};
 
@@ -506,9 +506,9 @@ sub delete_key {
     }
 
     my ($err_section, $section) = $self->_validate_section($_[0]);
-    croak $err_section if $err_section;
+    die $err_section if $err_section;
     my ($err_name, $name) = $self->_validate_key($_[1]);
-    croak $err_name if $err_name;
+    die $err_name if $err_name;
 
     my $p = $self->{_parsed};
 
@@ -584,7 +584,7 @@ sub as_string {
                 $line->[COL_K_NL],
             );
         } else {
-            croak "BUG: Unknown type '$type' in line $linum";
+            die "BUG: Unknown type '$type' in line $linum";
         }
     }
 

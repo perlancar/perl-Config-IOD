@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+
+use 5.010;
+use strict;
+use warnings;
+
+use Benchmark::Command;
+
+Benchmark::Command::run(0, {
+    'perl'              => [$^X, "-e1"],
+    'load_ciod'         => [$^X, "-MConfig::IOD", "-e", 1],
+    'read_empty_iod'    => [$^X, "-MConfig::IOD", "-e", '$reader = Config::IOD->new; $doc = $reader->read_string("")'],
+});
