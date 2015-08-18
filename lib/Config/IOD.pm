@@ -109,7 +109,7 @@ sub _read_string {
             }
             my $args = $self->_parse_command_line($6);
             if (!defined($args)) {
-                $self->_err("Invalid arguments syntax '$line'");
+                $self->_err("Invalid arguments syntax '$6'");
             }
             if ($directive eq 'include') {
                 my $path;
