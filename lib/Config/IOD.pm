@@ -47,22 +47,6 @@ sub _read_string {
             next LINE;
         }
 
-        # key line
-        if ($line =~ /^(\s*)([^=]+?)(\s*)=
-                      (\s*)(.*?)
-                      (\R?)\z/x) {
-            push @$res, [
-                'K',
-                $1, # COL_K_WS1
-                $2, # COL_K_KEY
-                $3, # COL_K_WS2
-                $4, # COL_K_WS3
-                $5, # COL_K_VALUE_RAW
-                $6, # COL_K_NL
-            ];
-            next LINE;
-        }
-
         # section line
         if ($line =~ /^(\s*)\[(\s*)(.+?)(\s*)\]
                       (?: (\s*)([;#])(.*))?
@@ -151,6 +135,22 @@ sub _read_string {
                 $2, # COL_C_COMMENT_CHAR
                 $3, # COL_C_COMMENT
                 $4, # COL_C_NL
+            ];
+            next LINE;
+        }
+
+        # key line
+        if ($line =~ /^(\s*)([^=]+?)(\s*)=
+                      (\s*)(.*?)
+                      (\R?)\z/x) {
+            push @$res, [
+                'K',
+                $1, # COL_K_WS1
+                $2, # COL_K_KEY
+                $3, # COL_K_WS2
+                $4, # COL_K_WS3
+                $5, # COL_K_VALUE_RAW
+                $6, # COL_K_NL
             ];
             next LINE;
         }
