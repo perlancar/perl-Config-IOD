@@ -232,6 +232,51 @@ sub _find_section {
     return @res;
 }
 
+sub each_section {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my ($code) = @_;
+
+    my @linums = $self->_find_section({all=>1});
+    my %seen;
+    for my $linum (@linums) {
+        my $section = $self->{_parsed}[$linum-1][COL_S_SECTION];
+        next if $opts->{unique} && $seen{$section}++;
+        $code->(
+            $self,
+            linum   => $linum,
+            parsed  => $self->{_parsed}[$linum-1],
+            section => $section,
+        );
+    }
+}
+
+sub list_sections {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my @res;
+    $self->each_section(
+        $opts,
+        sub {
+            my ($self, %args) = @_;
+            push @res, $args{section};
+        }
+    );
+    @res;
+}
+
 sub _get_section_line_range {
     my $self = shift;
     my $opts;
@@ -719,6 +764,23 @@ Return a hoh (hash of section names and hashes, where each of the second-level
 hash is of keys and values), Values will be decoded and merging will be done,
 but includes are not processed (even though C<include> directive is active).
 
+=head2 $doc->each_section([ \%opts , ] $code) => LIST
+
+Execute C<$code> for each section found in document, in order of occurrence.
+C<$code> will be called with arguments C<< ($self, %args) >> where C<%args> will
+contain these keys: C<section> (str, section name), C<linum> (int, line number,
+1-based), C<parsed> (array, parsed line).
+
+Options:
+
+=over
+
+=item * unique => bool
+
+If set to 1, will only list the first occurence of each section.
+
+=back
+
 =head2 $doc->empty()
 
 Empty document.
@@ -798,6 +860,20 @@ Optional. Comment to add at the end of section line.
 =item * linum => posint
 
 Optional. Insert at this specific line number. Ignores C<top>.
+
+=back
+
+=head2 $doc->list_sections([ \%opts ]) => LIST
+
+List sections in the document, in order of occurrence.
+
+Options:
+
+=over
+
+=item * unique => bool
+
+If set to 1, will only list the first occurrence of each section.
 
 =back
 
