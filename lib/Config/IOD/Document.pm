@@ -118,6 +118,12 @@ sub _discard_cache {
 
 sub dump {
     my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
 
     my $parser = $self->{_parser};
 
@@ -145,6 +151,9 @@ sub dump {
 
     for my $line (@{ $self->{_parsed} }) {
         $linum++;
+        next if defined($opts->{linum_start}) && $linum < $opts->{linum_start};
+        next if defined($opts->{linum_end}  ) && $linum > $opts->{linum_end};
+
         my $type = $line->[COL_TYPE];
         if ($type eq 'D') {
             my $directive = $line->[COL_D_DIRECTIVE];
@@ -240,7 +249,6 @@ sub each_section {
     } else {
         $opts = {};
     }
-
     my ($code) = @_;
 
     my $parsed = $self->{_parsed};
@@ -769,11 +777,25 @@ occurrence.
 
 =back
 
-=head2 $doc->dump() => hoh
+=head2 $doc->dump([ \%opts ]) => hoh
 
 Return a hoh (hash of section names and hashes, where each of the second-level
 hash is of keys and values), Values will be decoded and merging will be done,
 but includes are not processed (even though C<include> directive is active).
+
+Options:
+
+=over
+
+=item * linum_start => int
+
+Only dump beginning from this line number.
+
+=item * linum_end => int
+
+Only dump until this line number.
+
+=back
 
 =head2 $doc->each_section([ \%opts , ] $code) => LIST
 
