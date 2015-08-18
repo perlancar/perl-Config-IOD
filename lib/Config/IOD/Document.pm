@@ -243,16 +243,27 @@ sub each_section {
 
     my ($code) = @_;
 
+    my $parsed = $self->{_parsed};
     my @linums = $self->_find_section({all=>1});
     my %seen;
     for my $linum (@linums) {
-        my $section = $self->{_parsed}[$linum-1][COL_S_SECTION];
+        my $section = $parsed->[$linum-1][COL_S_SECTION];
         next if $opts->{unique} && $seen{$section}++;
+
+        my $linum_end = $linum;
+        while (1) {
+            last if $linum_end >= @$parsed;
+            last if $parsed->[$linum_end][COL_TYPE] eq 'S';
+            $linum_end++;
+        }
+
         $code->(
             $self,
-            linum   => $linum,
-            parsed  => $self->{_parsed}[$linum-1],
-            section => $section,
+            linum       => $linum,
+            linum_start => $linum,
+            linum_end   => $linum_end,
+            parsed      => $parsed->[$linum-1],
+            section     => $section,
         );
     }
 }
@@ -769,7 +780,8 @@ but includes are not processed (even though C<include> directive is active).
 Execute C<$code> for each section found in document, in order of occurrence.
 C<$code> will be called with arguments C<< ($self, %args) >> where C<%args> will
 contain these keys: C<section> (str, section name), C<linum> (int, line number,
-1-based), C<parsed> (array, parsed line).
+1-based), C<linum_start> (the same as C<linum>), C<linum_end> (int, line number
+of the last line of the section), C<parsed> (array, parsed line).
 
 Options:
 
