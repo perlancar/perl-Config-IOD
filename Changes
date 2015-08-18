@@ -1,5 +1,12 @@
 Revision history for Config-IOD
 
+0.17    2015-08-18 (PERLANCAR)
+
+        - Add methods: each_section() & list_sections().
+
+        - dump(): Add options linum_start & linum_end.
+
+
 0.16    2015-05-05 (PERLANCAR)
 
 	- No functional changes.
