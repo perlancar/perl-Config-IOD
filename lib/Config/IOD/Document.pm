@@ -209,6 +209,50 @@ sub dump {
     $res;
 }
 
+sub each_key {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+    my ($code) = @_;
+
+    my $parser = $self->{_parser};
+
+    my $linum = 0;
+    my $cur_section = $parser->{default_section};
+
+    my $skip_section;
+    my %seen_sections;
+    my %seen_keys;
+    for my $line (@{ $self->{_parsed} }) {
+        $linum++;
+        next if defined($opts->{linum_start}) && $linum < $opts->{linum_start};
+        next if defined($opts->{linum_end}  ) && $linum > $opts->{linum_end};
+
+        my $type = $line->[COL_TYPE];
+        if ($type eq 'S') {
+            $cur_section = $line->[COL_S_SECTION];
+            %seen_keys = ();
+            $skip_section = $opts->{unique_section} &&
+                $seen_sections{$cur_section}++;
+        } elsif ($type eq 'K') {
+            next if $skip_section;
+            my $key = $line->[COL_K_KEY];
+            next if $opts->{unique_key} && $seen_keys{$key}++;
+            $code->(
+                $self,
+                linum     => $linum,
+                section   => $cur_section,
+                key       => $key,
+                raw_value => $line->[COL_K_VALUE_RAW],
+            );
+        }
+    }
+}
+
 sub get_value {
     my ($self, $section, $key) = @_;
     $self->{_dump_cache} = $self->dump unless $self->{_dump_cache};
@@ -794,6 +838,37 @@ Only dump beginning from this line number.
 =item * linum_end => int
 
 Only dump until this line number.
+
+=back
+
+=head2 $doc->each_key([ \%opts , ] $code) => LIST
+
+Execute C<$code> for each key found in document, in order of occurrence.
+C<$code> will be called with arguments C<< ($self, %args) >> where C<%args> will
+contain these keys: C<section> (str, current section name), C<key> (str, key
+name), C<value> (any, value, NOT YET IMPLEMENTED/AVAILABLE), C<raw_value> (str,
+raw/undecoded value), C<linum> (int, line number, 1-based), C<parsed> (array,
+parsed line).
+
+Options:
+
+=over
+
+=item * linum_start => int
+
+Only dump beginning from this line number.
+
+=item * linum_end => int
+
+Only dump until this line number.
+
+=item * unique_section => bool
+
+If set to 1, will only list the first occurence of each section.
+
+=item * unique_key => bool
+
+If set to 1, will only list the first occurence of each key in the same section.
 
 =back
 
