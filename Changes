@@ -1,5 +1,10 @@
 Revision history for Config-IOD
 
+0.18    2015-08-18 (PERLANCAR)
+
+	- Add each_key().
+
+
 0.17    2015-08-18 (PERLANCAR)
 
         - Add methods: each_section() & list_sections().
