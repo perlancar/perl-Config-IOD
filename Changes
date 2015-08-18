@@ -1,5 +1,11 @@
 Revision history for Config-IOD
 
+0.19    2015-08-18 (PERLANCAR)
+
+	- [Bugfix] ';name=val' was parsed as key line when it should be
+	  comment line.
+
+
 0.18    2015-08-18 (PERLANCAR)
 
 	- Add each_key().
