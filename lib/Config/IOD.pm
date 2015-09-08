@@ -169,7 +169,7 @@ sub _read_string {
 }
 
 1;
-#ABSTRACT: Read and write IOD configuration files
+#ABSTRACT: Read and write IOD/INI configuration files
 
 =head1 SYNOPSIS
 
@@ -189,7 +189,8 @@ sub _read_string {
      # enable_expr         => 0,
  );
 
-Read IOD document from a file or string, return L<Config::IOD::Document> object:
+Read IOD/INI document from a file or string, return L<Config::IOD::Document>
+object:
 
  my $doc = $iod->read_file("/path/to/some.iod");
  my $doc = $iod->read_string("...");
@@ -199,9 +200,11 @@ See Config::IOD::Document for methods available for C<$doc>.
 
 =head1 DESCRIPTION
 
-This module is a round-trip parser for L<IOD> configuration format. Round-trip
-means all whitespaces and comments are preserved, so you get byte-by-byte
-equivalence if you dump back the parsed document into string.
+This module is a round-trip parser for L<IOD> configuration format (IOD is an
+INI-like format with more precise specification, some extra features, and 99%
+compatible with typical INI format). Round-trip means all whitespaces and
+comments are preserved, so you get byte-by-byte equivalence if you dump back the
+parsed document into string.
 
 Aside from parsing, methods for modifying IOD documents (add/delete sections &
 keys, etc) are also provided.
