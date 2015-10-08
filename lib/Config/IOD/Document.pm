@@ -594,7 +594,7 @@ sub delete_section {
 
     if ($opts->{cond}) {
         @line_ranges = grep {
-            !$opts->{cond}->(
+            $opts->{cond}->(
                 $self,
                 linum_start => $_->[0],
                 linum_end   => $_->[1],
@@ -641,7 +641,7 @@ sub delete_key {
     if ($opts->{cond}) {
         @linums = grep {
             my $line = $self->{_parsed}[$_-1];
-            !$opts->{cond}->(
+            $opts->{cond}->(
                 $self,
                 linum     => $_,
                 parsed    => $line,

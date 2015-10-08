@@ -89,7 +89,7 @@ d=4
 [s1]
 EOF2
 
-    test_modify_doc(sub { my $res = $_[0]->delete_key({all=>1, cond=>sub { my ($self, %args) = @_; return $args{raw_value} % 2 == 0 ? 0:1 }}, "s", "a"); is($res, 2, "return value") },
+    test_modify_doc(sub { my $res = $_[0]->delete_key({all=>1, cond=>sub { my ($self, %args) = @_; return $args{raw_value} % 2 == 0 ? 1:0 }}, "s", "a"); is($res, 2, "return value") },
                               <<'EOF1', <<'EOF2', 'opt:cond');
 [s]
 a=1
