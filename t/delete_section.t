@@ -58,6 +58,23 @@ a=1
 d=4
 EOF2
 
+
+    test_modify_doc(sub { my $res = $_[0]->delete_section({all=>1, cond=>sub{ my ($self, %args) = @_; return $args{linum_start} < $args{linum_end} ? 1:0} }, "s"); is($res, 1, "return value") },
+                    <<'EOF1', <<'EOF2', 'opt:cond');
+[s]
+a=1
+[s]
+[s]
+b=2
+
+EOF1
+[s]
+a=1
+[s]
+b=2
+
+EOF2
+
 };
 
 DONE_TESTING:

@@ -592,6 +592,16 @@ sub delete_section {
         @line_ranges = () if !defined($line_ranges[0]);
     }
 
+    if ($opts->{cond}) {
+        @line_ranges = grep {
+            !$opts->{cond}->(
+                $self,
+                linum_start => $_->[0],
+                linum_end   => $_->[1],
+            );
+        } @line_ranges;
+    }
+
     my $num_deleted = 0;
     for my $line_range (reverse @line_ranges) {
         next unless defined $line_range;
@@ -626,6 +636,20 @@ sub delete_key {
     } else {
         @linums = ($self->_find_key($section, $name));
         @linums = () if !defined($linums[0]);
+    }
+
+    if ($opts->{cond}) {
+        @linums = grep {
+            my $line = $self->{_parsed}[$_-1];
+            !$opts->{cond}->(
+                $self,
+                linum     => $_,
+                parsed    => $line,
+                key       => $line->[COL_K_KEY],
+                raw_value => $line->[COL_K_VALUE_RAW],
+                # XXX value
+            );
+        } @linums;
     }
 
     my $num_deleted = 0;
@@ -804,6 +828,13 @@ Options:
 If set to 1, then will delete all occurrences. By default only delete the first
 occurrence.
 
+=item * cond => code
+
+Will only delete key if C<cond> returns true. C<cond> will be called with C<<
+($self, %args) >> where the hash will contain these keys: C<linum> (int, line
+number), C<parsed> (array, parsed line), C<key> (string, key name), C<value>
+(NOT YET IMPLEMENTED), C<raw_value> (str, raw/undecoded value).
+
 =back
 
 =head2 $doc->delete_section([\%opts, ]$section) => $num_deleted
@@ -818,6 +849,12 @@ Options:
 
 If set to 1, then will delete all occurrences. By default only delete the first
 occurrence.
+
+=item * cond => code
+
+Will only delete section if C<cond> returns true. C<cond> will be called with
+C<< ($self, %args) >> where the hash will contain these keys: C<linum_start>
+(int, starting line number), C<linum_end> (int, ending line number).
 
 =back
 
