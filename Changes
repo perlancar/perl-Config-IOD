@@ -1,5 +1,10 @@
 Revision history for Config-IOD
 
+0.23    2015-10-08 (PERLANCAR)
+
+	- [Bugfix] Reverse wrong logic in interpreting 'cond' result, d'oh.
+
+
 0.22    2015-10-08 (PERLANCAR)
 
 	- Add 'cond' options for delete_key() & delete_section().
