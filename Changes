@@ -1,5 +1,13 @@
 Revision history for Config-IOD
 
+0.24    2016-02-24 (PERLANCAR)
+
+	- Adjust to Config::IOD::Base 0.22 (implement encoding !path &
+	  !paths).
+
+	- Remove bench script (see Bencher-Scenario-IODParsing now).
+
+
 0.23    2015-10-08 (PERLANCAR)
 
 	- [Bugfix] Reverse wrong logic in interpreting 'cond' result, d'oh.
