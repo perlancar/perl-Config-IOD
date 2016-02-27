@@ -1,5 +1,10 @@
 Revision history for Config-IOD
 
+0.26    2016-02-27 (PERLANCAR)
+
+	- [Bugfix] Didn't maintain _cur_section state during parsing.
+
+
 0.25    2016-02-27 (PERLANCAR)
 
         - [Incompatible change] Directive line with Unknown directive will now
