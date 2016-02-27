@@ -1,5 +1,16 @@
 Revision history for Config-IOD
 
+0.25    2016-02-27 (PERLANCAR)
+
+        - [Incompatible change] Directive line with Unknown directive will now
+	  still parse as directive line, not regular comment.
+
+	- Document: Add list_keys() & get_directive_before_key().
+
+        - Implement checking of allow_duplicate_key=0, like in
+          Config::IOD::Reader.
+
+
 0.24    2016-02-24 (PERLANCAR)
 
 	- Adjust to Config::IOD::Base 0.22 (implement encoding !path &
