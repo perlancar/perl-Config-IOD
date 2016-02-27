@@ -12,6 +12,8 @@ use parent qw(Config::IOD::Base);
 sub _init_read {
     my $self = shift;
 
+    $self->{_cur_section} = $self->{default_section};
+
     # for checking when allow_duplicate_key=0
     $self->{_key_mem} = {}; # key=section name, value=hash of key->1
 
@@ -65,6 +67,7 @@ sub _read_string {
                 $7, # COL_S_COMMENT
                 $8, # COL_S_NL
             ];
+            $self->{_cur_section} = $3;
             next LINE;
         }
 
@@ -154,12 +157,11 @@ sub _read_string {
             ];
             if (!$self->{allow_duplicate_key}) {
                 my $kmem = $self->{_key_mem};
-                my $cur_section = $self->{_cur_section} //
-                    $self->{default_section};
-                if ($kmem->{$cur_section}{$2}) {
-                    $self->_err("Duplicate key: $2 (section $cur_section)");
+                if ($kmem->{$self->{_cur_section}}{$2}) {
+                    $self->_err(
+                        "Duplicate key: $2 (section $self->{_cur_section})");
                 }
-                $kmem->{$cur_section}{$2} = 1;
+                $kmem->{$self->{_cur_section}}{$2} = 1;
             }
             next LINE;
         }
