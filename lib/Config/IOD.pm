@@ -12,6 +12,9 @@ use parent qw(Config::IOD::Base);
 sub _init_read {
     my $self = shift;
 
+    # for checking when allow_duplicate_key=0
+    $self->{_key_mem} = {}; # key=section name, value=hash of key->1
+
     $self->SUPER::_init_read;
 }
 
@@ -115,9 +118,6 @@ sub _read_string {
             } elsif ($directive eq 'noop') {
             } else {
                 if ($self->{ignore_unknown_directive}) {
-                    # assume a regular comment
-                    $line = $line0;
-                    goto L1;
                 } else {
                     $self->_err("Unknown directive '$directive'");
                 }
@@ -152,6 +152,15 @@ sub _read_string {
                 $5, # COL_K_VALUE_RAW
                 $6, # COL_K_NL
             ];
+            if (!$self->{allow_duplicate_key}) {
+                my $kmem = $self->{_key_mem};
+                my $cur_section = $self->{_cur_section} //
+                    $self->{default_section};
+                if ($kmem->{$cur_section}{$2}) {
+                    $self->_err("Duplicate key: $2 (section $cur_section)");
+                }
+                $kmem->{$cur_section}{$2} = 1;
+            }
             next LINE;
         }
 
@@ -187,6 +196,7 @@ sub _read_string {
      # disallow_directives => undef, # or ['include','merge',...]
      # allow_bang_only     => 1,
      # enable_expr         => 0,
+     # allow_duplicate_key => 1,
  );
 
 Read IOD/INI document from a file or string, return L<Config::IOD::Document>

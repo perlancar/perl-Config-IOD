@@ -259,6 +259,52 @@ sub get_value {
     $self->{_dump_cache}{$section}{$key};
 }
 
+sub get_directive_before_key {
+    my ($self, $section, $key) = @_;
+
+    my $found;
+    $self->each_key(
+        sub {
+            my ($self, %args) = @_;
+            return if $found;
+            return unless $args{linum} > 1;
+            return unless $args{section} eq $section;
+            return unless $args{key} eq $key;
+            my $l = $self->{_parsed}[ $args{linum}-1-1 ];
+            return unless $l->[COL_TYPE] eq 'D';
+            my $p = $self->{_parser};
+            $found = [
+                $l->[COL_D_DIRECTIVE],
+                @{ $p->_parse_command_line($l->[COL_D_ARGS_RAW]) // [] },
+            ];
+        },
+    );
+    $found;
+}
+
+sub list_keys {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+    my ($section) = @_;
+
+    my @res;
+    my %mem;
+    $self->each_key(
+        sub {
+            my ($self, %args) = @_;
+            return unless $args{section} eq $section;
+            return if $opts->{unique} && $mem{$args{key}}++;
+            push @res, $args{key};
+        },
+    );
+    @res;
+}
+
 sub _find_section {
     my $self = shift;
     my $opts;
@@ -941,6 +987,17 @@ C<get_value()> will avoid re-parsing the whole document. (The cache will
 automatically be discarded is one of document-modifying methods like
 C<delete_section()> is called.)
 
+=head2 $doc->get_directive_before_key($section, $key) => array
+
+Find directive right before a key. Directive must directly precede key line
+without any blank line, e.g.:
+
+ ;!lint_prereqs assume-used "undetected, used via Riap"
+ App::MyApp=0
+
+If found, will return an arrayref containing directive name and arguments.
+Otherwise, will return undef.
+
 =head2 $doc->insert_key([\%opts, ]$section, $key, $value)
 
 Insert a key named C<$name> with value C<$value> under C<$section>. Die on
@@ -1020,6 +1077,20 @@ Options:
 =item * unique => bool
 
 If set to 1, will only list the first occurrence of each section.
+
+=back
+
+=head2 $doc->list_keys([ \%opts ], $section) => LIST
+
+List keys in the section named <$section>.
+
+Options:
+
+=over
+
+=item * unique => bool
+
+If set to 1, will only list the first occurrence of each key.
 
 =back
 
