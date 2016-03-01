@@ -1,5 +1,10 @@
 Revision history for Config-IOD
 
+0.28    2016-03-02 (PERLANCAR)
+
+	- Add set_value() method to document object.
+
+
 0.27    2016-03-01 (PERLANCAR)
 
 	- No functional changes.
