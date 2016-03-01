@@ -199,6 +199,7 @@ sub _read_string {
      # allow_bang_only     => 1,
      # enable_expr         => 0,
      # allow_duplicate_key => 1,
+     # ignore_unknown_directive => 0,
  );
 
 Read IOD/INI document from a file or string, return L<Config::IOD::Document>
