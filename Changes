@@ -1,5 +1,12 @@
 Revision history for Config-IOD
 
+0.27    2016-03-01 (PERLANCAR)
+
+	- No functional changes.
+
+	- Update Synopsis.
+
+
 0.26    2016-02-27 (PERLANCAR)
 
 	- [Bugfix] Didn't maintain _cur_section state during parsing.
