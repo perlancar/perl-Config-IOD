@@ -708,6 +708,34 @@ sub delete_key {
     $num_deleted;
 }
 
+sub set_value {
+    my $self = shift;
+    my $opts;
+    if (ref($_[0]) eq 'HASH') {
+        $opts = shift;
+    } else {
+        $opts = {};
+    }
+
+    my $section = $_[0];
+    my $key     = $_[1];
+    my ($err_value, $value) = $self->_validate_value($_[2]);
+    die $err_value if $err_value;
+
+    my $found;
+    $self->each_key(
+        sub {
+            my ($self, %args) = @_;
+            return if $found && !$opts->{all};
+            return unless $args{section} eq $section;
+            return unless $args{key} eq $key;
+            $found++;
+            my $l = $self->{_parsed}[ $args{linum}-1 ];
+            $l->[COL_K_VALUE_RAW] = $value;
+        },
+    );
+}
+
 sub as_string {
     my $self = shift;
 
@@ -1091,6 +1119,18 @@ Options:
 =item * unique => bool
 
 If set to 1, will only list the first occurrence of each key.
+
+=back
+
+=head2 $doc->set_value([ \%opts ], $section, $key, $new_value)
+
+Set value of a key.
+
+Options:
+
+=over
+
+=item * all => bool
 
 =back
 
