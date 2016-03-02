@@ -1005,16 +1005,6 @@ If set to 1, will only list the first occurence of each section.
 
 Empty document.
 
-=head2 $doc->get_value($section, $key) => $value
-
-Get value. Values are decoded and section merging is respected, but includes are
-not processed.
-
-Internally, will do a C<dump()> and cache the result so subsequent
-C<get_value()> will avoid re-parsing the whole document. (The cache will
-automatically be discarded is one of document-modifying methods like
-C<delete_section()> is called.)
-
 =head2 $doc->get_directive_before_key($section, $key) => array
 
 Find directive right before a key. Directive must directly precede key line
@@ -1026,10 +1016,21 @@ without any blank line, e.g.:
 If found, will return an arrayref containing directive name and arguments.
 Otherwise, will return undef.
 
-=head2 $doc->insert_key([\%opts, ]$section, $key, $value)
+=head2 $doc->get_value($section, $key) => $value
 
-Insert a key named C<$name> with value C<$value> under C<$section>. Die on
-failure.
+Get value. Values are decoded and section merging is respected, but includes are
+not processed.
+
+Internally, will do a C<dump()> and cache the result so subsequent
+C<get_value()> will avoid re-parsing the whole document. (The cache will
+automatically be discarded is one of document-modifying methods like
+C<delete_section()> is called.)
+
+=head2 $doc->insert_key([\%opts, ]$section, $key, $value) => int
+
+Insert a key named C<$name> with value C<$value> under C<$section>. Return line
+number where the key is inserted, or undef if nothing is inserted (e.g. when
+C<ignore> option is set to true). Die on failure.
 
 Options:
 
@@ -1069,7 +1070,8 @@ section. Ignores C<top>.
 =head2 $doc->insert_section([\%opts, ]$name) => int
 
 Insert empty section named C<$name>. Return line number where the section is
-inserted. Die on failure.
+inserted, or undef if nothing is inserted (e.g. when C<ignore> option is set to
+true). Die on failure.
 
 Options:
 
@@ -1094,20 +1096,6 @@ Optional. Insert at this specific line number. Ignores C<top>.
 
 =back
 
-=head2 $doc->list_sections([ \%opts ]) => LIST
-
-List sections in the document, in order of occurrence.
-
-Options:
-
-=over
-
-=item * unique => bool
-
-If set to 1, will only list the first occurrence of each section.
-
-=back
-
 =head2 $doc->list_keys([ \%opts ], $section) => LIST
 
 List keys in the section named <$section>.
@@ -1119,6 +1107,20 @@ Options:
 =item * unique => bool
 
 If set to 1, will only list the first occurrence of each key.
+
+=back
+
+=head2 $doc->list_sections([ \%opts ]) => LIST
+
+List sections in the document, in order of occurrence.
+
+Options:
+
+=over
+
+=item * unique => bool
+
+If set to 1, will only list the first occurrence of each section.
 
 =back
 
