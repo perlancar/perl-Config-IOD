@@ -1,5 +1,13 @@
 Revision history for Config-IOD
 
+0.29    2016-03-03 (PERLANCAR)
+
+        - Split constants to Config::IOD::Constants so they are usable by other
+          modules.
+
+        - Minor doc polishing.
+
+
 0.28    2016-03-02 (PERLANCAR)
 
 	- Add set_value() method to document object.
