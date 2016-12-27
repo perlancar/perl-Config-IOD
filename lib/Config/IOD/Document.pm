@@ -371,16 +371,19 @@ sub _get_section_line_range {
     my $start;
     for my $line (@{ $self->{_parsed} }) {
         $linum++;
-        $start = $linum if !$start && $cur_section eq $name;
         if ($line->[COL_TYPE] eq 'S') {
             $cur_section = $line->[COL_S_SECTION];
-            do { push @res, [$start, $linum]; undef $start } if $start;
-            $start = $linum+1 if !$start && $cur_section eq $name;
+            if ($cur_section eq $name) {
+                $start = $linum+1;
+                $res[-1][1] = $linum if @res && !defined $res[-1][1];
+                push @res, [$start, undef];
+            } else {
+                $res[-1][1] = $linum if @res;
+                last if @res && !$opts->{all};
+            }
         }
-        goto L1 if @res && !$opts->{all};
     }
-    $linum = $start if $start && $linum < $start;
-    push @res, [$start, $linum] if $start;
+    $res[-1][1] = $linum+1 if @res && !defined($res[-1][1]);
 
   L1:
     if ($opts->{all}) { return @res } else { return $res[0] }

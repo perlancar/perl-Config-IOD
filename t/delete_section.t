@@ -43,6 +43,25 @@ d=4
 [s1]
 EOF2
 
+    test_modify_doc(sub { my $res = $_[0]->delete_section("s3"); is($res, 1, "return value") },
+                    <<'EOF1', <<'EOF2', 'default (last section)');
+a=1
+[s1]
+b=2
+c=3
+[s2]
+d=4
+[s3]
+e=5
+EOF1
+a=1
+[s1]
+b=2
+c=3
+[s2]
+d=4
+EOF2
+
     test_modify_doc(sub { my $res = $_[0]->delete_section({all=>1}, "s1"); is($res, 2, "return value") },
                     <<'EOF1', <<'EOF2', 'opt:all=1');
 a=1
