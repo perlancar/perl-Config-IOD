@@ -1,5 +1,11 @@
 Revision history for Config-IOD
 
+0.30    2016-12-27 (PERLANCAR)
+
+	- [Bugfix] Fix off-by-one error in calculating section line range
+	  for last section in document.
+
+
 0.29    2016-03-03 (PERLANCAR)
 
         - Split constants to Config::IOD::Constants so they are usable by other
