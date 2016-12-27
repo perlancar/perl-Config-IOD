@@ -1,5 +1,13 @@
 Revision history for Config-IOD
 
+0.32    2016-12-28 (PERLANCAR)
+
+	- No functional changes.
+
+	- [dist] Fix expressing follow-spec prereq relationship with
+	  x_spec.
+
+
 0.31    2016-12-27 (PERLANCAR)
 
 	- No functional changes.
