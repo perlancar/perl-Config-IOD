@@ -1,5 +1,13 @@
 Revision history for Config-IOD
 
+0.31    2016-12-27 (PERLANCAR)
+
+	- No functional changes.
+
+	- [dist] Moving spec prereq from DevelopRecommends to
+	  DevelopSuggests with _SPEC:: prefix.
+
+
 0.30    2016-12-27 (PERLANCAR)
 
 	- [Bugfix] Fix off-by-one error in calculating section line range
