@@ -1,5 +1,11 @@
 Revision history for Config-IOD
 
+0.33    2016-12-29 (PERLANCAR)
+
+	- [test] Try to un-fail test on systems where the home dir is faked
+	  [CT].
+
+
 0.32    2016-12-28 (PERLANCAR)
 
 	- No functional changes.
