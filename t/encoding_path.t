@@ -34,8 +34,13 @@ dirs2     = !paths $tempdir/g*
 dirs3     = !paths $tempdir/h*
 EOF
 
-is_deeply($doc->get_value("without_encoding", "home_dir" ), "~");
-is_deeply($doc->get_value("with_encoding"   , "home_dir" ), $pw[7]);
+is($doc->get_value("without_encoding", "home_dir" ), "~");
+
+{
+    my $path = $doc->get_value("with_encoding"   , "home_dir" );
+    ok($path eq $pw[7] || $ENV{HOME} && $path eq $ENV{HOME});
+}
+
 is_deeply($doc->get_value("with_encoding"   , "dirs"     ), ["$tempdir/f1", "$tempdir/f2"]);
 is_deeply($doc->get_value("with_encoding"   , "dirs2"    ), ["$tempdir/g1"]);
 is_deeply($doc->get_value("with_encoding"   , "dirs3"    ), []);
