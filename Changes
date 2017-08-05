@@ -1,3 +1,9 @@
+0.34    2017-08-05 (PERLANCAR)
+
+	- Adjust test to IOD::Examples 0.201 and Config::IOD::Base 0.33
+	  (expr, variables in expr).
+
+
 0.33    2016-12-29 (PERLANCAR)
 
 	- [test] Try to un-fail test on systems where the home dir is faked
