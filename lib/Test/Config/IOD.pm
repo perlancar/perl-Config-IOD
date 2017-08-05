@@ -3,6 +3,8 @@ package Test::Config::IOD;
 # DATE
 # VERSION
 
+## no critic (Modules::ProhibitAutomaticExportation)
+
 use 5.010;
 use strict;
 use warnings;
@@ -49,4 +51,3 @@ sub test_modify_doc {
 Parse string C<$doc1> into a L<Config::IOD::Document> object, then run C<<
 $code->($doc_obj) >>, then compare C<< $doc_obj->as_string >> with string
 C<$doc2>.
-

@@ -46,4 +46,5 @@ use Exporter qw(import);
 our @EXPORT_OK = sort keys %constants;
 our %EXPORT_TAGS = (ALL => \@EXPORT_OK);
 
+1;
 # ABSTRACT: Constants used when parsing IOD document
