@@ -73,7 +73,7 @@ sub _read_string {
 
         # directive line
         my $line0 = $line;
-        if ($line =~ s/$directive_re//) {
+        if ($self->{enable_directive} && $line =~ s/$directive_re//) {
             push @$res, [
                 'D',
                 $1, # COL_D_COMMENT_CHAR
