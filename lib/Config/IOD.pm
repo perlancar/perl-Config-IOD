@@ -188,6 +188,7 @@ sub _read_string {
  my $iod = Config::IOD->new(
      # list of known attributes, with their default values
      # default_section     => 'GLOBAL',
+     # enable_directive    => 1,
      # enable_encoding     => 1,
      # enable_quoting      => 1,
      # enable_backet       => 1,
