@@ -1,3 +1,12 @@
+0.351   2021-06-21  Released-By: PERLANCAR; Urgency: medium
+
+	[object Config::IOD::Document]
+
+        - Add methods: key_exists, section_exists.
+
+        - Add option early_exit to each_key(), each_section().
+
+
 0.350   2019-01-17  Released-By: PERLANCAR
 
 	- Adjust to Config::IOD::Base 0.341 (add attribute enable_directive).

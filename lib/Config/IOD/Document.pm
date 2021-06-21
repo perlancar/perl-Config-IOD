@@ -1127,6 +1127,16 @@ If set to 1, will only list the first occurrence of each key.
 
 =back
 
+=head2 $doc->key_exists([ \%opts ], $section, $key) => bool
+
+Check whether a key exists.
+
+Options:
+
+=over
+
+=back
+
 =head2 $doc->list_sections([ \%opts ]) => LIST
 
 List sections in the document, in order of occurrence.
@@ -1138,6 +1148,16 @@ Options:
 =item * unique => bool
 
 If set to 1, will only list the first occurrence of each section.
+
+=back
+
+=head2 $doc->section_exists([ \%opts ], $section) => bool
+
+Check whether a section exists.
+
+Options:
+
+=over
 
 =back
 
