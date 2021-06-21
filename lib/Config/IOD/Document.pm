@@ -209,13 +209,14 @@ sub each_key {
             next if $skip_section;
             my $key = $line->[COL_K_KEY];
             next if $opts->{unique_key} && $seen_keys{$key}++;
-            $code->(
+            my $res = $code->(
                 $self,
                 linum     => $linum,
                 section   => $cur_section,
                 key       => $key,
                 raw_value => $line->[COL_K_VALUE_RAW],
             );
+            return if $opts->{early_exit} && !$res;
         }
     }
 }
@@ -272,6 +273,24 @@ sub list_keys {
     @res;
 }
 
+sub key_exists {
+    my $self = shift;
+    my ($section, $key) = @_;
+
+    my $found;
+    $self->each_key(
+        {early_exit=>1},
+        sub {
+            my ($self, %args) = @_;
+            return 1 unless $args{section} eq $section;
+            return 1 unless $args{key} eq $key;
+            $found++;
+            return 0;
+        },
+    );
+    $found;
+}
+
 sub _find_section {
     my $self = shift;
     my $opts;
@@ -322,7 +341,7 @@ sub each_section {
             $linum_end++;
         }
 
-        $code->(
+        my $res = $code->(
             $self,
             linum       => $linum,
             linum_start => $linum,
@@ -330,6 +349,7 @@ sub each_section {
             parsed      => $parsed->[$linum-1],
             section     => $section,
         );
+        return if $opts->{early_exit} && !$res;
     }
 }
 
@@ -351,6 +371,23 @@ sub list_sections {
         }
     );
     @res;
+}
+
+sub section_exists {
+    my $self = shift;
+    my ($section) = @_;
+
+    my $found;
+    $self->each_section(
+        {early_exit=>1},
+        sub {
+            my ($self, %args) = @_;
+            return 1 unless $args{section} eq $section;
+            $found++;
+            return 0;
+        },
+    );
+    $found;
 }
 
 sub _get_section_line_range {
@@ -951,6 +988,11 @@ If set to 1, will only list the first occurence of each section.
 
 If set to 1, will only list the first occurence of each key in the same section.
 
+=item * early_exit => bool
+
+If set to 1, then if coderef returns false will return early immediately and not
+continue to the next key.
+
 =back
 
 =head2 $doc->each_section([ \%opts , ] $code) => LIST
@@ -968,6 +1010,11 @@ Options:
 =item * unique => bool
 
 If set to 1, will only list the first occurence of each section.
+
+=item * early_exit => bool
+
+If set to 1, then if coderef returns false will return early immediately and not
+continue to the next section.
 
 =back
 
