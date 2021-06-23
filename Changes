@@ -1,3 +1,13 @@
+0.352   2021-06-21  Released-By: PERLANCAR; Urgency: low
+
+        - No functional changes.
+
+        - [build] Rebuild to fix CONTRIBUTORS section.
+
+        - [doc] Fix typo about default of enable_expr, which should be off not
+          on.
+
+
 0.351   2021-06-21  Released-By: PERLANCAR; Urgency: medium
 
 	[object Config::IOD::Document]
