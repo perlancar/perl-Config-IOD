@@ -1,13 +1,15 @@
 package Config::IOD;
 
-# DATE
-# VERSION
-
 use 5.010001;
 use strict;
 use warnings;
 
 use parent qw(Config::IOD::Base);
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
 
 sub _init_read {
     my $self = shift;

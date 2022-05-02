@@ -1,6 +1,9 @@
+## no critic: TestingAndDebugging::RequireUseStrict
 package Config::IOD::Constants;
 
+# AUTHORITY
 # DATE
+# DIST
 # VERSION
 
 BEGIN {

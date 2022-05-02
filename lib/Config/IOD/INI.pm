@@ -1,13 +1,15 @@
 package Config::IOD::INI;
 
-# DATE
-# VERSION
-
 use 5.010001;
 use strict;
 use warnings;
 
 use parent qw(Config::IOD);
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
 
 sub new {
     my ($class, %attrs) = @_;

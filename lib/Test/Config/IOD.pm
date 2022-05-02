@@ -1,8 +1,5 @@
 package Test::Config::IOD;
 
-# DATE
-# VERSION
-
 ## no critic (Modules::ProhibitAutomaticExportation)
 
 use 5.010;
@@ -15,6 +12,12 @@ use Test::More;
 use Config::IOD;
 
 use Exporter qw(import);
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
+
 our @EXPORT = qw(test_modify_doc);
 
 sub test_modify_doc {

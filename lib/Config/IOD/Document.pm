@@ -1,14 +1,16 @@
 package Config::IOD::Document;
 
-# DATE
-# VERSION
-
 use 5.010;
 use strict;
 use warnings;
 #use Carp; # avoided to shave a bit of startup time
 
 use Config::IOD::Constants qw(:ALL);
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
 
 sub new {
     my ($class, %attrs) = @_;
@@ -313,7 +315,7 @@ sub _find_section {
         return $linum unless $opts->{all};
         push @res, $linum;
     }
-    return undef unless $opts->{all};
+    return undef unless $opts->{all}; ## no critic: Subroutines::ProhibitExplicitReturnUndef
     return @res;
 }
 
@@ -452,7 +454,7 @@ sub _find_key {
         return $linum unless $opts->{all};
         push @res, $linum;
     }
-    return undef unless $opts->{all};
+    return undef unless $opts->{all}; ## no critic: Subroutines::ProhibitExplicitReturnUndef
     return @res;
 }
 
@@ -503,7 +505,7 @@ sub insert_section {
 
     if ($self->_find_section($name)) {
         if ($opts->{ignore}) {
-            return undef;
+            return undef; ## no critic: Subroutines::ProhibitExplicitReturnUndef
         } else {
             die "Can't insert section '$name': already exists";
         }
@@ -577,7 +579,7 @@ sub insert_key {
         $linum = $self->_find_key($section, $name);
         if ($linum) {
             if ($opts->{ignore}) {
-                return undef;
+                return undef; ## no critic: Subroutines::ProhibitExplicitReturnUndef
             } elsif ($opts->{add}) {
                 #
             } elsif ($opts->{replace}) {
