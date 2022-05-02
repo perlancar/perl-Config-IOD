@@ -155,6 +155,11 @@ sub _read_string {
                 $5, # COL_K_VALUE_RAW
                 $6, # COL_K_NL
             ];
+
+            if ($self->{warn_perl} && !$4 && substr($5, 0, 1) eq '>') {
+                $self->_warn("Probably using Perl syntax instead of INI: $line");
+            }
+
             if (!$self->{allow_duplicate_key}) {
                 my $kmem = $self->{_key_mem};
                 if ($kmem->{$self->{_cur_section}}{$2}) {
